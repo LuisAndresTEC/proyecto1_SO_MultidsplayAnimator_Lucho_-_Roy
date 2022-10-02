@@ -5,7 +5,7 @@ use std::ops::Index;
 use std::ptr::null;
 use std::task::Context;
 use crate::add_pthread;
-use crate::my_pthread_pool::PthreadPool;
+use crate::my_pthread_pool::{PthreadPool, remove_thread, set_transit_values};
 use libc::{c_char, swapcontext, makecontext, getcontext, ucontext_t, c_void};
 //se defien el maximo de threads que se pueden crear
 const MAX_THREADS: usize = 4;
@@ -59,29 +59,49 @@ pub(crate) unsafe fn my_thread_create(priority: u64, mut pool: PthreadPool, func
             context: contextCreating,
             sched: schedulerEnum::round_robin,
         };
+
         pool = add_pthread(pool, thread);
         return pool
     }
 }
 
-pub(crate) fn my_thread_end(thread: MyPthread) -> MyPthread {
-    let mut thread = thread;
-    thread.state = states::terminated;
-    return thread
+pub(crate) fn my_thread_end(mut pool: PthreadPool, index: usize) -> PthreadPool {
+    pool = remove_thread(pool, index);
+    return pool
+
 }
 
 //esta función hace el yield de los threads usando ucontext_t
-pub(crate) unsafe fn my_thread_yield(threadPool: PthreadPool, index: usize) -> PthreadPool {
-    let contextFrom = match threadPool.threadRunnig.state {
-        Some(ref mut x) => &mut *x,
-        None => panic!(),
-    }
-    let contextTo = match threadPool.pthreads[index].state {
-        Some(ref mut x) => &mut *x,
-        None => panic!(),
-    }
-    swapcontext(&mut contextFrom.stack, &mut contextTo.stack);
 
+pub(crate) unsafe fn my_thread_yield(mut threadPool: PthreadPool) -> PthreadPool {
+    let mut contextFrom = threadPool.actualContext.unwrap();
+
+    //se hace el swap de los contextos
+    swapcontext(&mut contextFrom as *mut ucontext_t, &mut threadPool.contexts[1] as *mut ucontext_t);
+    //se actualiza el actualContext
+    threadPool.actualContext = Some(threadPool.contexts[1]);
+    //se agrega el actualContext al final del vector de contextos
+    threadPool.contexts.push(threadPool.actualContext.unwrap());
+    //se elimina el actualContext del vector de contextos en el indice 0
+    threadPool.contexts.remove(0);
+
+    return threadPool
+}
+
+//ESta funcion inicializa un hilo especifico segun su prioridad y los asigana a los campos de transito en el pool
+pub(crate) fn thread_init(mut pool: PthreadPool) -> PthreadPool {
+    let mut aux = 0;
+    let mut aux2 = 0;
+    for i in 0..pool.pthreads.len() {
+        if pool.pthreads[i].priority > aux {
+            aux = pool.pthreads[i].priority;
+            aux2 = i;
+        }
+    }
+    pool = set_transit_values(pool, aux2);
+
+
+   return pool
 }
 
 pub(crate) fn my_thread_join(thread: MyPthread) -> MyPthread {
