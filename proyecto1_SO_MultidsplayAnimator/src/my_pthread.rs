@@ -84,44 +84,45 @@ pub(crate) unsafe fn my_thread_create(priority: u64, mut pool: PthreadPool, func
     return pool
 }
 
-/*
-pub(crate) fn my_thread_yield(mut pool: PthreadPool, scheduler: schedulerEnum) -> PthreadPool {
-    let mut aux = Vec::new();
-    match  scheduler{
-        schedulerEnum::round_robin => unsafe {
-            aux = pool.rr_pthreads.unwrap();
-            //swapcontext(aux[0].context as *mut ucontext_t, aux[1].context as *mut ucontext_t);
-            aux.rotate_left(0);
-            aux.remove(0);
-            pool.rr_pthreads = Some(aux);
+pub(crate) unsafe fn my_thread_yield(mut pool: PthreadPool) -> PthreadPool {
+    let mut context_update;
+    match pool.scheduler {
+        schedulerEnum::round_robin => {
+            context_update = pool.rr_pthreads[0].context;
+            let mut aux_pthread = pool.rr_pthreads[0];
+            pool.rr_pthreads.remove(0);
+            pool.rr_pthreads.push(aux_pthread);
         }
-        schedulerEnum::lottery => unsafe {
-            aux = pool.lt_pthreads.unwrap();
-            //swapcontext(aux[0].context as *mut ucontext_t, aux[1].context as *mut ucontext_t);
-
+        schedulerEnum::lottery => {
+            context_update = pool.lt_pthreads[0].context;
+            let mut aux_pthread = pool.lt_pthreads[0];
+            pool.lt_pthreads.remove(0);
+            pool.lt_pthreads.push(aux_pthread);
         }
-        schedulerEnum::real_time => unsafe {
-            aux = pool.rt_pthreads.unwrap();
-            // swapcontext(aux[0].context as *mut ucontext_t, aux[1].context as *mut ucontext_t);
 
+        schedulerEnum::real_time => {
+            context_update = pool.rt_pthreads[0].context;
+            let mut aux_pthread = pool.rt_pthreads[0];
+            pool.rt_pthreads.remove(0);
+            pool.rt_pthreads.push(aux_pthread);
         }
     }
-
+    swapcontext(&mut pool.actual_context.unwrap() as *mut ucontext_t, &mut context_update as *mut ucontext_t);
+    pool.actual_context = Some(context_update);
     return pool;
 }
-*/
+
+
+
+
+
 
 pub(crate) fn my_thread_end(mut pool: PthreadPool, index: usize) -> PthreadPool {
     pool = remove_thread(pool, index);
     return pool
-
 }
 
-
-
-//ESta funcion inicializa un hilo especifico segun su prioridad y los asigna a los campos de transito en el pool
-
-
+//Esta funcion inicializa un hilo especifico segun su prioridad y los asigna a los campos de transito en el pool
 pub(crate) fn my_thread_join(thread: MyPthread) -> MyPthread {
     let mut thread = thread;
     thread.state = states::blocked;
