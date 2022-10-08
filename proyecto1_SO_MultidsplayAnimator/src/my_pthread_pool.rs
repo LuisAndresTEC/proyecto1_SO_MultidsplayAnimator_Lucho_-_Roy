@@ -4,10 +4,10 @@ use crate::my_pthread::{MyPthread, schedulerEnum};
 
 pub(crate) struct PthreadPool {
     pub(crate) scheduler: schedulerEnum,
-    pub(crate) pthreads: Vec<*mut MyPthread>,
-    pub(crate) rr_pthreads: Vec<*mut MyPthread>,
-    pub(crate) lt_pthreads: Vec<*mut MyPthread>,
-    pub(crate) rt_pthreads: Vec<*mut MyPthread>,
+    pub(crate) pthreads: Vec<MyPthread>,
+    pub(crate) rr_pthreads: Vec<MyPthread>,
+    pub(crate) lt_pthreads: Vec<MyPthread>,
+    pub(crate) rt_pthreads: Vec<MyPthread>,
     pub(crate) actual_context: Option<ucontext_t>,
     pub(crate) serial: u32
 }
@@ -26,7 +26,7 @@ pub(crate) fn create_pthread_pool() -> PthreadPool {
     };
     return pool
 }
-
+/*
 pub(crate) unsafe fn add_pthread(mut pool: PthreadPool, thread :*mut MyPthread) -> PthreadPool {
     pool.pthreads.push(thread);
     pool.serial += 1;
@@ -43,7 +43,7 @@ pub(crate) unsafe fn add_pthread(mut pool: PthreadPool, thread :*mut MyPthread) 
     }
     return pool;
 }
-
+*/
 
 
 

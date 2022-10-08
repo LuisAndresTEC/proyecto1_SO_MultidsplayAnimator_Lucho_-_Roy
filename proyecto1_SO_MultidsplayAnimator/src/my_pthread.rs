@@ -4,13 +4,14 @@ use std::mem;
 use std::ops::Index;
 use std::ptr::null;
 use std::task::Context;
-use crate::add_pthread;
+//use crate::add_pthread;
 use crate::my_pthread_pool::{PthreadPool, remove_thread};
 use libc::{c_char, swapcontext, makecontext, getcontext, ucontext_t, c_void, remove, clone_args};
 //se defien el maximo de threads que se pueden crear
 const MAX_THREADS: usize = 4;
 
 //este objeto es thread sobre el cual se va a trabajar
+#[derive(Clone, Copy)]
 pub(crate) struct MyPthread {
     pub(crate) id: u32,
     pub(crate) state: states,
@@ -22,6 +23,7 @@ pub(crate) struct MyPthread {
 
 
 //se esblecen los nombres de los diferentes tipos de schedulers
+#[derive(Clone, Copy)]
 pub(crate) enum schedulerEnum {
     real_time,
     round_robin,
@@ -29,6 +31,7 @@ pub(crate) enum schedulerEnum {
 }
 
 //se establecen los estados para los threads
+#[derive(Clone, Copy)]
 pub(crate) enum states {
     running,
     ready,
@@ -38,7 +41,7 @@ pub(crate) enum states {
 
 
 pub(crate) unsafe fn my_thread_create(priority: u64, mut pool: PthreadPool, func: extern "C" fn(), mut scheduler: schedulerEnum) -> PthreadPool {
-
+    //Se establece el contaxt para ese nuevo thread
     unsafe {
         let mut starter: [c_char; 8192] = [mem::zeroed(); 8192];
 
@@ -54,18 +57,31 @@ pub(crate) unsafe fn my_thread_create(priority: u64, mut pool: PthreadPool, func
         makecontext(&mut contextCreating as *mut ucontext_t, func, 0);
 
 
-    let mut thread = MyPthread {
-        id: pool.serial,
-        state: states::ready,
-        priority: priority,
-        context: contextCreating,
-        sched: scheduler,
-        tickets: None
-    };
-
-        pool = add_pthread(pool, thread);
-        return pool
+        //se crea el thread
+        let mut thread = MyPthread {
+            id: pool.serial,
+            state: states::ready,
+            priority: priority,
+            context: contextCreating,
+            sched: scheduler,
+            tickets: None
+        };
+        //se agrega el thread a la pool
+        pool.pthreads.push(thread.clone());
+        pool.serial += 1;
+        match thread.sched {
+            schedulerEnum::round_robin => {
+                pool.rr_pthreads.push(thread.clone());
+            }
+            schedulerEnum::lottery => {
+                pool.lt_pthreads.push(thread.clone());
+            }
+            schedulerEnum::real_time => {
+                pool.rt_pthreads.push(thread.clone());
+            }
+        }
     }
+    return pool
 }
 
 /*

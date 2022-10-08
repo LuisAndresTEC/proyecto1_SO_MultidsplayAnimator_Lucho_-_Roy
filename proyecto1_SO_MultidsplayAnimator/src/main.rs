@@ -3,7 +3,7 @@ use crate:: my_pthread::{my_thread_create, my_thread_end, schedulerEnum};
 mod my_pthread_pool;
 mod my_schedulers;
 
-use crate::my_pthread_pool::{create_pthread_pool, add_pthread};
+use crate::my_pthread_pool::{create_pthread_pool};
 
 
 
