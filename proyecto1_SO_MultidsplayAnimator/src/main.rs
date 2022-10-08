@@ -1,11 +1,10 @@
 mod my_pthread;
-use my_pthread::my_thread_create;
+use crate:: my_pthread::{my_thread_create, my_thread_end, schedulerEnum};
 mod my_pthread_pool;
 mod my_schedulers;
 
-use crate::my_pthread_pool::create_pthread_pool;
-use my_pthread_pool::add_pthread;
-use crate::my_pthread::my_thread_end;
+use crate::my_pthread_pool::{create_pthread_pool, add_pthread};
+
 
 
 extern "C" fn f1() {
@@ -17,11 +16,11 @@ extern "C" fn f1() {
 
 fn main() {
     let mut pool = create_pthread_pool();
-    unsafe { pool = my_thread_create(5, pool, f1); }
-    unsafe { pool = my_thread_create(3, pool, f1); }
-    unsafe { pool = my_thread_create(1, pool, f1); }
-    unsafe { pool = my_thread_create(2, pool, f1); }
-    unsafe { pool = my_thread_create(4, pool, f1); }
+    unsafe { pool = my_thread_create(5, pool, f1, schedulerEnum::round_robin); }
+    unsafe { pool = my_thread_create(3, pool, f1, schedulerEnum::round_robin); }
+    unsafe { pool = my_thread_create(1, pool, f1, schedulerEnum::real_time); }
+    unsafe { pool = my_thread_create(2, pool, f1, schedulerEnum::real_time); }
+    unsafe { pool = my_thread_create(4, pool, f1, schedulerEnum::lottery); }
     //imprime el len de los treads en el pool
     println!("{}", pool.pthreads.len().to_string());
     for i in 0..pool.pthreads.len() {
