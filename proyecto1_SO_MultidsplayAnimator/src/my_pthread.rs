@@ -71,13 +71,13 @@ pub(crate) unsafe fn my_thread_create(priority: u64, mut pool: PthreadPool, func
         pool.serial += 1;
         match thread.sched {
             schedulerEnum::round_robin => {
-                pool.rr_pthreads.push(thread.clone());
+                pool.rr_pthreads.push(pool.pthreads[pool.pthreads.len() - 1]);
             }
             schedulerEnum::lottery => {
-                pool.lt_pthreads.push(thread.clone());
+                pool.lt_pthreads.push(pool.pthreads[pool.pthreads.len() - 1]);
             }
             schedulerEnum::real_time => {
-                pool.rt_pthreads.push(thread.clone());
+                pool.rt_pthreads.push(pool.pthreads[pool.pthreads.len() - 1]);
             }
         }
     }
@@ -113,21 +113,41 @@ pub(crate) unsafe fn my_thread_yield(mut pool: PthreadPool) -> PthreadPool {
 }
 
 
+pub(crate) fn my_thread_detach(mut pool: PthreadPool) -> PthreadPool {
+    pool.rr_pthreads.remove(0);
+    pool.lt_pthreads.remove(0);
+    pool.rt_pthreads.remove(0);
+    pool = remove_thread(pool,0);
+    return pool;
+}
+
+//esta funcion espera a que la ejecucion de un thread termine
+pub(crate) fn my_thread_join(mut pool: PthreadPool) -> PthreadPool {
+    let mut context_update;
+    match pool.scheduler {
+        schedulerEnum::round_robin => {
+            context_update = pool.rr_pthreads[0];
+        }
+        schedulerEnum::lottery => {
+            context_update = pool.lt_pthreads[0];
+        }
+        schedulerEnum::real_time => {
+            context_update = pool.rt_pthreads[0];
+        }
+    }
+    context_update.state = states::blocked;
+    pool.actual_context.unwrap().uc_link= &mut context_update.context;
 
 
 
+    return pool;
+}
 
 pub(crate) fn my_thread_end(mut pool: PthreadPool, index: usize) -> PthreadPool {
     pool = remove_thread(pool, index);
     return pool
 }
 
-//Esta funcion inicializa un hilo especifico segun su prioridad y los asigna a los campos de transito en el pool
-pub(crate) fn my_thread_join(thread: MyPthread) -> MyPthread {
-    let mut thread = thread;
-    thread.state = states::blocked;
-    return thread
-}
 
 pub(crate) fn my_thread_chsched(mut thread: MyPthread, scheduler: u32) -> MyPthread {
     match scheduler {
