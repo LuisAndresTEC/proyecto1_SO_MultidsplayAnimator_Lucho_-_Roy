@@ -1,5 +1,6 @@
 use std::ptr::null;
 use libc::{clone, ucontext_t};
+use crate::mutex::{MyMutex,my_mutex_init};
 use crate::my_pthread::{MyPthread, schedulerEnum};
 
 #[derive(Clone)]
@@ -10,6 +11,7 @@ pub(crate) struct PthreadPool {
     pub(crate) lt_pthreads: Vec<MyPthread>,
     pub(crate) rt_pthreads: Vec<MyPthread>,
     pub(crate) actual_context: Option<ucontext_t>,
+    pub(crate) mutex: MyMutex,
     pub(crate) serial: u32
 }
 
@@ -23,6 +25,7 @@ pub(crate) fn create_pthread_pool() -> PthreadPool {
         lt_pthreads: Vec::new(),
         rt_pthreads: Vec::new(),
         actual_context: None,
+        mutex: my_mutex_init(),
         serial: 0
     };
     return pool
