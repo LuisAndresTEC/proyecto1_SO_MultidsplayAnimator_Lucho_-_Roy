@@ -8,6 +8,7 @@ pub(crate) struct MyMutex {
     pub(crate) owner: Option<ucontext_t>,
     pub(crate) waiters: Vec<ucontext_t>
 }
+
 pub(crate) fn  my_mutex_init()-> MyMutex {
     let mut mutex = MyMutex {
         locked: false,
@@ -19,12 +20,13 @@ pub(crate) fn  my_mutex_init()-> MyMutex {
 
 pub(crate) unsafe fn my_mutex_lock(mut mutex: MyMutex, mut pool: PthreadPool) -> (MyMutex, PthreadPool) {
     if mutex.locked {
-        mutex.waiters.push(pool.actual_context.unwrap());
+
+        mutex.waiters.push(pool.actual_thread[0].context);
         pool = my_thread_yield(pool);
         return (mutex, pool)
     } else {
         mutex.locked = true;
-        mutex.owner = Some(pool.actual_context.unwrap());
+        mutex.owner = Some(pool.actual_thread[0].context);
         return (mutex, pool)
     }
 }
@@ -61,7 +63,7 @@ pub(crate) fn my_mutex_trylock(mut pool: PthreadPool) -> (PthreadPool) {
         return pool;
     } else {
         pool.mutex.locked = true;
-        pool.mutex.owner = Some(pool.actual_context.unwrap());
+        pool.mutex.owner = Some(pool.actual_thread[0].context);
         return pool;
     }
 }
