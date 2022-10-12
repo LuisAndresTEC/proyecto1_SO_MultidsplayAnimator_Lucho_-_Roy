@@ -24,18 +24,34 @@ fn main() {
     unsafe { pool = my_thread_create(2, pool, f1, schedulerEnum::real_time); }
     unsafe { pool = my_thread_create(4, pool, f1, schedulerEnum::lottery); }
     //imprime el len de los treads en el pool
-    println!("{}", pool.pthreads.len().to_string());
-    for i in 0..pool.pthreads.len() {
-        println!("\t\tThread {} priority {}\n\n", pool.pthreads[i].id, pool.pthreads[i].priority);
+
+    println!("\n\nRound Robin Threads");
+    for i in 0..pool.rr_pthreads.len() {
+
+        println!("\t\tThread {} priority {}  \n\n ", pool.rr_pthreads[i].id, pool.rr_pthreads[i].priority,);
+        //imprime informacion sobrelos contextos
+    }
+    println!("\n\nReal Time Threads");
+    for i in 0..pool.rt_pthreads.len() {
+
+        println!("\t\tThread {} priority {}  \n\n ", pool.rt_pthreads[i].id, pool.rt_pthreads[i].priority,);
+        //imprime informacion sobrelos contextos
+    }
+    println!("\n\nLottery Threads");
+    for i in 0..pool.lt_pthreads.len() {
+
+        println!("\t\tThread {} priority {}  \n\n ", pool.lt_pthreads[i].id, pool.lt_pthreads[i].priority,);
         //imprime informacion sobrelos contextos
     }
     //Elimina un thread del pool
     pool = my_thread_end(pool, 0);
     println!("---------------------Ya se eliminó el thread 0---------------------");
     //imprime el len de los treads en el pool
-    println!("{}", pool.pthreads.len().to_string());
-    for i in 0..pool.pthreads.len() {
-        println!("\t\tThread {} priority {}\n\n", pool.pthreads[i].id, pool.pthreads[i].priority);
+    println!("\n\nRound Robin Threads");
+    for i in 0..pool.rr_pthreads.len() {
+
+        println!("\t\tThread {} priority {}  \n\n ", pool.rr_pthreads[i].id, pool.rr_pthreads[i].priority,);
         //imprime informacion sobrelos contextos
     }
+
 }
