@@ -73,6 +73,7 @@ pub(crate) unsafe fn my_thread_create(priority: u64, mut pool: PthreadPool, func
         pool.serial += 1;
         match pthread.sched {
             schedulerEnum::round_robin => {
+<<<<<<< HEAD
                 pool.rr_pthreads.push(pthread.clone());
             }
             schedulerEnum::lottery => {
@@ -80,6 +81,15 @@ pub(crate) unsafe fn my_thread_create(priority: u64, mut pool: PthreadPool, func
             }
             schedulerEnum::real_time => {
                 pool.rt_pthreads.push(pthread.clone());
+=======
+                pool.rr_pthreads.push(thread.clone());
+            }
+            schedulerEnum::lottery => {
+                pool.lt_pthreads.push(thread.clone());
+            }
+            schedulerEnum::real_time => {
+                pool.rt_pthreads.push(thread.clone());
+>>>>>>> origin/main
             }
         }
     }
