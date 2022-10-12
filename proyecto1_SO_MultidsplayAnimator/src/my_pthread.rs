@@ -6,7 +6,7 @@ use std::ptr::null;
 use std::task::Context;
 //use crate::add_pthread;
 use crate::my_pthread_pool::{PthreadPool, remove_thread};
-use libc::{c_char, swapcontext, makecontext, getcontext, ucontext_t, c_void, remove, clone_args};
+use libc::{c_char, swapcontext, makecontext, getcontext, ucontext_t, c_void, remove, clone_args, setcontext, free};
 //se defien el maximo de threads que se pueden crear
 const MAX_THREADS: usize = 4;
 
@@ -18,7 +18,7 @@ pub(crate) struct MyPthread {
     pub(crate) priority: u64,
     pub(crate) context: ucontext_t,
     pub(crate) sched: schedulerEnum,
-    pub(crate) tickets: Option<usize>
+    pub(crate) tickets: usize,
 }
 
 
@@ -37,6 +37,7 @@ pub(crate) enum states {
     ready,
     blocked,
     terminated,
+    detached
 }
 
 
@@ -58,26 +59,27 @@ pub(crate) unsafe fn my_thread_create(priority: u64, mut pool: PthreadPool, func
 
         makecontext(&mut contextCreating as *mut ucontext_t, func, 0);
         //se crea el thread
-        let mut thread = MyPthread {
+        let mut pthread;
+
+        pthread = MyPthread {
             id: pool.serial,
             state: states::ready,
             priority: priority,
             context: contextCreating,
             sched: scheduler,
-            tickets: None
+            tickets: priority as usize
         };
-        //se agrega el thread a la pool
-        pool.pthreads.push(thread.clone());
+        //se agrega el thread al pool
         pool.serial += 1;
-        match thread.sched {
+        match pthread.sched {
             schedulerEnum::round_robin => {
-                pool.rr_pthreads.push(pool.pthreads[pool.pthreads.len() - 1]);
+                pool.rr_pthreads.push(pthread.clone());
             }
             schedulerEnum::lottery => {
-                pool.lt_pthreads.push(pool.pthreads[pool.pthreads.len() - 1]);
+                pool.lt_pthreads.push(pthread.clone());
             }
             schedulerEnum::real_time => {
-                pool.rt_pthreads.push(pool.pthreads[pool.pthreads.len() - 1]);
+                pool.rt_pthreads.push(pthread.clone());
             }
         }
     }
@@ -90,32 +92,33 @@ pub(crate) unsafe fn my_thread_yield(mut pool: PthreadPool) -> PthreadPool {
         schedulerEnum::round_robin => {
             if state_validation(states::ready, pool.rr_pthreads[0]){
                 thread_update = pool.rr_pthreads[0].clone();
-                let mut aux_pthread = pool.rr_pthreads[0];
+                thread_update.state = states::running;
                 pool.rr_pthreads.remove(0);
-                pool.rr_pthreads.push(aux_pthread);
+                pool.rr_pthreads.push(thread_update.clone());
             }
         }
         schedulerEnum::lottery => {
             if state_validation(states::ready, pool.lt_pthreads[0]) {
                 thread_update = pool.lt_pthreads[0].clone();
-                let mut aux_pthread = pool.lt_pthreads[0];
+                thread_update.state = states::running;
                 pool.lt_pthreads.remove(0);
-                pool.lt_pthreads.push(aux_pthread);
+                pool.lt_pthreads.push(thread_update.clone());
             }
         }
 
         schedulerEnum::real_time => {
             if state_validation(states::ready, pool.rt_pthreads[0]) {
                 thread_update = pool.rt_pthreads[0].clone();
-                let mut aux_pthread = pool.rt_pthreads[0];
+                thread_update.state = states::running;
                 pool.rt_pthreads.remove(0);
-                pool.rt_pthreads.push(aux_pthread);
+                pool.rt_pthreads.push(thread_update.clone());
             }
         }
     }
     if thread_update.id == pool.actual_thread[0].id {
         panic!("No hay contextos disponibes");
     }else{
+        //validar si  el proceso que va a salir ya termino o si hay que reintegrarlo a la cola
         swapcontext(&mut pool.actual_thread[0].context as *mut ucontext_t, &mut thread_update.context as *mut ucontext_t);
         pool.actual_thread[0] = thread_update.clone();
     }
@@ -123,13 +126,33 @@ pub(crate) unsafe fn my_thread_yield(mut pool: PthreadPool) -> PthreadPool {
 }
 
 
-pub(crate) fn my_thread_detach(mut pool: PthreadPool) -> PthreadPool {
-    pool.rr_pthreads.remove(0);
-    pool.lt_pthreads.remove(0);
-    pool.rt_pthreads.remove(0);
-    pool = remove_thread(pool,0);
+pub(crate) fn my_thread_detach(mut thread: MyPthread, mut pool: PthreadPool) -> PthreadPool {
+    if thread.state == states:: detached || thread.state == states::terminated || thread.state == states::blocked {
+        panic!("El thread no puede ser detached");
+    }else{
+        let mut index = pool.get_index_by_id(thread.id).unwrap();
+        match thread.sched {
+            schedulerEnum::round_robin => unsafe {
+                setcontext(&mut thread.context as *mut ucontext_t);
+                pool.rr_pthreads[index].state = states::detached;
+            }
+            schedulerEnum::lottery => unsafe {
+                setcontext(&mut thread.context as *mut ucontext_t);
+                pool.lt_pthreads[index].state = states::detached;
+
+            }
+            schedulerEnum::real_time => unsafe {
+                setcontext(&mut thread.context as *mut ucontext_t);
+                pool.rt_pthreads[index].state = states::detached;
+            }
+        }
+    }
     return pool;
 }
+
+
+
+
 
 //esta funcion espera a que la ejecucion de un thread termine
 pub(crate) fn my_thread_join(mut pool: PthreadPool) -> PthreadPool {
