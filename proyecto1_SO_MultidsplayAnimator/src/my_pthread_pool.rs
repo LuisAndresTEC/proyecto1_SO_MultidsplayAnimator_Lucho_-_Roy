@@ -108,7 +108,7 @@ pub(crate) fn create_pthread_pool() -> PthreadPool {
     return pool
 }
 
-pub(crate) fn remove_thread(mut pool: PthreadPool, thread_id: usize) -> PthreadPool {
+pub(crate) fn remove_thread(mut pool: PthreadPool,mut thread_id: usize) -> PthreadPool {
     let mut thread = pool.get_by_id(thread_id as u32).unwrap().clone();
     match thread.sched {
         schedulerEnum::round_robin => {

@@ -18,7 +18,7 @@ pub(crate) struct MyPthread {
     pub(crate) priority: u64,
     pub(crate) context: ucontext_t,
     pub(crate) sched: schedulerEnum,
-    pub(crate) tickets: usize,
+    pub(crate) tickets: u64,
 }
 
 
@@ -41,7 +41,7 @@ pub(crate) enum states {
 }
 
 
-pub(crate) unsafe fn my_thread_create(priority: u64, mut pool: PthreadPool, func: extern "C" fn(), mut scheduler: schedulerEnum) -> PthreadPool {
+pub(crate) unsafe fn my_thread_create(mut priority: u64, mut pool: PthreadPool, func: extern "C" fn(), mut scheduler: schedulerEnum) -> PthreadPool {
     //Se establece el contaxt para ese nuevo thread
     unsafe {
         let mut starter: [c_char; 8192] = [mem::zeroed(); 8192];
@@ -59,29 +59,20 @@ pub(crate) unsafe fn my_thread_create(priority: u64, mut pool: PthreadPool, func
 
         makecontext(&mut contextCreating as *mut ucontext_t, func, 0);
         //se crea el thread
-        let mut pthread;
+        let mut thread;
 
-        pthread = MyPthread {
+        thread = MyPthread {
             id: pool.serial,
             state: states::ready,
             priority: priority,
             context: contextCreating,
             sched: scheduler,
-            tickets: priority as usize
+            tickets: priority,
         };
         //se agrega el thread al pool
         pool.serial += 1;
-        match pthread.sched {
+        match thread.sched {
             schedulerEnum::round_robin => {
-<<<<<<< HEAD
-                pool.rr_pthreads.push(pthread.clone());
-            }
-            schedulerEnum::lottery => {
-                pool.lt_pthreads.push(pthread.clone());
-            }
-            schedulerEnum::real_time => {
-                pool.rt_pthreads.push(pthread.clone());
-=======
                 pool.rr_pthreads.push(thread.clone());
             }
             schedulerEnum::lottery => {
@@ -89,7 +80,6 @@ pub(crate) unsafe fn my_thread_create(priority: u64, mut pool: PthreadPool, func
             }
             schedulerEnum::real_time => {
                 pool.rt_pthreads.push(thread.clone());
->>>>>>> origin/main
             }
         }
     }
