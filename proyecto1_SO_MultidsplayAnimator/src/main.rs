@@ -1,5 +1,5 @@
 mod my_pthread;
-use crate:: my_pthread::{my_thread_create, my_thread_end, schedulerEnum};
+use crate:: my_pthread::{my_thread_create, my_thread_end, SchedulerEnum};
 mod my_pthread_pool;
 mod my_schedulers;
 mod mutex;
@@ -18,14 +18,14 @@ extern "C" fn f1() {
 
 fn main() {
     let mut pool = create_pthread_pool();
-    unsafe { pool = my_thread_create(5, pool, f1, schedulerEnum::round_robin); }
-    unsafe { pool = my_thread_create(3, pool, f1, schedulerEnum::round_robin); }
-    unsafe { pool = my_thread_create(1, pool, f1, schedulerEnum::real_time); }
-    unsafe { pool = my_thread_create(2, pool, f1, schedulerEnum::real_time); }
-    unsafe { pool = my_thread_create(4, pool, f1, schedulerEnum::lottery); }
-    unsafe { pool = my_thread_create(8, pool, f1, schedulerEnum::lottery); }
-    unsafe { pool = my_thread_create(5, pool, f1, schedulerEnum::lottery); }
-    unsafe { pool = my_thread_create(6, pool, f1, schedulerEnum::lottery); }
+    unsafe { pool = my_thread_create(5, pool, f1, SchedulerEnum::RoundRobin); }
+    unsafe { pool = my_thread_create(3, pool, f1, SchedulerEnum::RoundRobin); }
+    unsafe { pool = my_thread_create(1, pool, f1, SchedulerEnum::RealTime); }
+    unsafe { pool = my_thread_create(2, pool, f1, SchedulerEnum::RealTime); }
+    unsafe { pool = my_thread_create(4, pool, f1, SchedulerEnum::Lottery); }
+    unsafe { pool = my_thread_create(8, pool, f1, SchedulerEnum::Lottery); }
+    unsafe { pool = my_thread_create(5, pool, f1, SchedulerEnum::Lottery); }
+    unsafe { pool = my_thread_create(6, pool, f1, SchedulerEnum::Lottery); }
     //imprime el len de los treads en el pool
 
     println!("\n\nRound Robin Threads");

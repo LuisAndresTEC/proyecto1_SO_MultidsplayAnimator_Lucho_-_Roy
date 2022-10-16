@@ -1,5 +1,5 @@
 use libc::{free, sleep, ucontext_t, usleep};
-use crate::my_pthread::{my_thread_yield, MyPthread, schedulerEnum};
+use crate::my_pthread::{my_thread_yield, MyPthread, SchedulerEnum};
 use crate::my_pthread_pool::{PthreadPool, remove_thread};
 
 pub(crate) fn  my_mutex_init()-> bool {

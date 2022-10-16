@@ -1,12 +1,7 @@
-use std::any::Any;
-use std::fs::copy;
 use std::mem;
-use std::ops::Index;
-use std::ptr::null;
-use std::task::Context;
 use crate::my_pthread_pool::{PthreadPool, remove_thread};
-use crate::mutex::{my_mutex_init, my_mutex_lock, my_mutex_unlock, my_mutex_trylock, my_mutex_destroy};
-use libc::{c_char, swapcontext, makecontext, getcontext, ucontext_t, c_void, remove, clone_args, setcontext, free};
+use crate::mutex::{my_mutex_lock};
+use libc::{c_char, swapcontext, makecontext, getcontext, ucontext_t, c_void, setcontext};
 //se defien el maximo de threads que se pueden crear
 const MAX_THREADS: usize = 4;
 
@@ -17,7 +12,7 @@ pub(crate) struct MyPthread {
     pub(crate) state: states,
     pub(crate) priority: u64,
     pub(crate) context: ucontext_t,
-    pub(crate) sched: schedulerEnum,
+    pub(crate) sched: SchedulerEnum,
     pub(crate) tickets: u64,
 }impl MyPthread{
     pub(crate) fn finishing_validator (mut self) -> MyPthread {
@@ -31,10 +26,10 @@ pub(crate) struct MyPthread {
 
 //se esblecen los nombres de los diferentes tipos de schedulers
 #[derive(Clone, Copy)]
-pub(crate) enum schedulerEnum {
-    real_time,
-    round_robin,
-    lottery
+pub(crate) enum SchedulerEnum {
+    RealTime,
+    RoundRobin,
+    Lottery
 }
 
 //se establecen los estados para los threads
@@ -48,7 +43,7 @@ pub(crate) enum states {
 }
 
 
-pub(crate) unsafe fn my_thread_create(mut priority: u64, mut pool: PthreadPool, func: extern "C" fn(), mut scheduler: schedulerEnum) -> PthreadPool {
+pub(crate) unsafe fn my_thread_create(mut priority: u64, mut pool: PthreadPool, func: extern "C" fn(), mut scheduler: SchedulerEnum) -> PthreadPool {
     //Se establece el contaxt para ese nuevo thread
     unsafe {
         let mut starter: [c_char; 8192] = [mem::zeroed(); 8192];
@@ -79,13 +74,13 @@ pub(crate) unsafe fn my_thread_create(mut priority: u64, mut pool: PthreadPool, 
         //se agrega el thread al pool
         pool.serial += 1;
         match thread.sched {
-            schedulerEnum::round_robin => {
+            SchedulerEnum::RoundRobin => {
                 pool.rr_pthreads.push(thread.clone());
             }
-            schedulerEnum::lottery => {
+            SchedulerEnum::Lottery => {
                 pool.lt_pthreads.push(thread.clone());
             }
-            schedulerEnum::real_time => {
+            SchedulerEnum::RealTime => {
                 pool.rt_pthreads.push(thread.clone());
             }
         }
@@ -96,7 +91,7 @@ pub(crate) unsafe fn my_thread_create(mut priority: u64, mut pool: PthreadPool, 
 pub(crate) unsafe fn my_thread_yield(mut pool: PthreadPool) -> PthreadPool {
     let mut thread_update= pool.actual_thread[0];
     match pool.scheduler {
-        schedulerEnum::round_robin => {
+        SchedulerEnum::RoundRobin => {
             if state_validation(states::ready, pool.rr_pthreads[0]) ||
                 state_validation(states::running, pool.rr_pthreads[0]) {
                 thread_update = pool.rr_pthreads[0].clone();
@@ -105,7 +100,7 @@ pub(crate) unsafe fn my_thread_yield(mut pool: PthreadPool) -> PthreadPool {
 
             }
         }
-        schedulerEnum::lottery => {
+        SchedulerEnum::Lottery => {
             if state_validation(states::ready, pool.lt_pthreads[0]) ||
                 state_validation(states::running, pool.lt_pthreads[0]) {
                 thread_update = pool.lt_pthreads[0].clone();
@@ -115,7 +110,7 @@ pub(crate) unsafe fn my_thread_yield(mut pool: PthreadPool) -> PthreadPool {
             }
         }
 
-        schedulerEnum::real_time => {
+        SchedulerEnum::RealTime => {
             if state_validation(states::ready, pool.rt_pthreads[0]) ||
                 state_validation(states::running, pool.rt_pthreads[0]) {
                 thread_update = pool.rt_pthreads[0].clone();
@@ -135,13 +130,13 @@ pub(crate) unsafe fn my_thread_yield(mut pool: PthreadPool) -> PthreadPool {
             swapcontext(&mut pool.actual_thread[0].context as *mut ucontext_t, &mut thread_update.context as *mut ucontext_t);
             pool = my_mutex_lock(pool);
             match pool.actual_thread[0].sched {
-                schedulerEnum::real_time => {
+                SchedulerEnum::RealTime => {
                     pool.rt_pthreads.push(pool.actual_thread[0].clone());
                 }
-                schedulerEnum::round_robin => {
+                SchedulerEnum::RoundRobin => {
                     pool.rr_pthreads.push(pool.actual_thread[0].clone());
                 }
-                schedulerEnum::lottery => {
+                SchedulerEnum::Lottery => {
                     pool.lt_pthreads.push(pool.actual_thread[0].clone());
                 }
             }
@@ -159,16 +154,16 @@ pub(crate) fn my_thread_detach(mut thread: MyPthread, mut pool: PthreadPool) -> 
     }else{
         let mut index = pool.get_index_by_id(thread.id).unwrap();
         match thread.sched {
-            schedulerEnum::round_robin => unsafe {
+            SchedulerEnum::RoundRobin => unsafe {
                 setcontext(&mut thread.context as *mut ucontext_t);
                 pool.rr_pthreads[index].state = states::detached;
             }
-            schedulerEnum::lottery => unsafe {
+            SchedulerEnum::Lottery => unsafe {
                 setcontext(&mut thread.context as *mut ucontext_t);
                 pool.lt_pthreads[index].state = states::detached;
 
             }
-            schedulerEnum::real_time => unsafe {
+            SchedulerEnum::RealTime => unsafe {
                 setcontext(&mut thread.context as *mut ucontext_t);
                 pool.rt_pthreads[index].state = states::detached;
             }
@@ -186,19 +181,19 @@ pub(crate) unsafe fn my_thread_join(mut pool: PthreadPool, mut index: usize) -> 
     let mut thread_update= pool.actual_thread[0];
 
     match pool.scheduler {
-        schedulerEnum::round_robin => {
+        SchedulerEnum::RoundRobin => {
             if state_validation(states::ready, pool.rr_pthreads[0]) ||
                 state_validation(states::running, pool.rr_pthreads[0]) {
                 thread_update = pool.rr_pthreads[index];
             }
         }
-        schedulerEnum::lottery => {
+        SchedulerEnum::Lottery => {
             if state_validation(states::ready, pool.rr_pthreads[0]) ||
                 state_validation(states::running, pool.rr_pthreads[0]) {
                 thread_update = pool.lt_pthreads[index ];
             }
         }
-        schedulerEnum::real_time => {
+        SchedulerEnum::RealTime => {
             if state_validation(states::ready, pool.rr_pthreads[0]) ||
                 state_validation(states::running, pool.rr_pthreads[0]) {
                 thread_update = pool.rt_pthreads[index ];
@@ -214,13 +209,13 @@ pub(crate) unsafe fn my_thread_join(mut pool: PthreadPool, mut index: usize) -> 
             setcontext(&mut pool.actual_thread[index as usize].context as *mut ucontext_t);
             pool = my_mutex_lock(pool);
             match pool.actual_thread[0].sched {
-                schedulerEnum::real_time => {
+                SchedulerEnum::RealTime => {
                     pool.rt_pthreads.push(pool.actual_thread[0].clone());
                 }
-                schedulerEnum::round_robin => {
+                SchedulerEnum::RoundRobin => {
                     pool.rr_pthreads.push(pool.actual_thread[0].clone());
                 }
-                schedulerEnum::lottery => {
+                SchedulerEnum::Lottery => {
                     pool.lt_pthreads.push(pool.actual_thread[0].clone());
                 }
             }
@@ -246,12 +241,12 @@ pub(crate) fn my_thread_end(mut pool: PthreadPool, index: usize) -> PthreadPool 
 }
 
 
-pub(crate) fn my_thread_chsched(mut thread: MyPthread, scheduler: u32) -> MyPthread {
+pub(crate) fn my_thread_change_sched(mut thread: MyPthread, scheduler: u32) -> MyPthread {
     match scheduler {
-        0 => thread.sched = schedulerEnum::real_time,
-        1 => thread.sched = schedulerEnum::round_robin,
-        2 => thread.sched = schedulerEnum::lottery,
-        _ => thread.sched = schedulerEnum::round_robin
+        0 => thread.sched = SchedulerEnum::RealTime,
+        1 => thread.sched = SchedulerEnum::RoundRobin,
+        2 => thread.sched = SchedulerEnum::Lottery,
+        _ => thread.sched = SchedulerEnum::RoundRobin
     }
     return thread
 }
