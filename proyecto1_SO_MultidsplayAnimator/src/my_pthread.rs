@@ -89,6 +89,7 @@ pub(crate) unsafe fn my_thread_create(mut priority: u64, mut pool: PthreadPool, 
 }
 
 pub(crate) unsafe fn my_thread_yield(mut pool: PthreadPool) -> PthreadPool {
+
     let mut thread_update= pool.actual_thread[0];
     match pool.scheduler {
         SchedulerEnum::RoundRobin => {
