@@ -1,69 +1,47 @@
-use libc::ucontext_t;
+use libc::{free, sleep, ucontext_t, usleep};
 use crate::my_pthread::{my_thread_yield, MyPthread, schedulerEnum};
 use crate::my_pthread_pool::{PthreadPool, remove_thread};
 
-#[derive(Clone)]
-pub(crate) struct MyMutex {
-    pub(crate) locked: bool,
-    pub(crate) owner: Option<ucontext_t>,
-    pub(crate) waiters: Vec<ucontext_t>
-}
-
-pub(crate) fn  my_mutex_init()-> MyMutex {
-    let mut mutex = MyMutex {
-        locked: false,
-        owner: None,
-        waiters: Vec::new()
-    };
+pub(crate) fn  my_mutex_init()-> bool {
+    let mutex = false;
     return mutex
 }
 
-pub(crate) unsafe fn my_mutex_lock(mut mutex: MyMutex, mut pool: PthreadPool) -> (MyMutex, PthreadPool) {
-    if mutex.locked {
-
-        mutex.waiters.push(pool.actual_thread[0].context);
-        pool = my_thread_yield(pool);
-        return (mutex, pool)
-    } else {
-        mutex.locked = true;
-        mutex.owner = Some(pool.actual_thread[0].context);
-        return (mutex, pool)
+pub(crate) fn change_mutex_state(mut mutex: Option<bool>) -> bool {
+    match mutex {
+        Some(true) => {
+            mutex = Some(false);
+            return true;
+        }
+        Some(false) => {
+            mutex = Some(true);
+            return false;
+        }
+        None => {
+            return false;
+        }
     }
 }
 
-pub(crate) fn my_mutex_destroy(mut pool: PthreadPool) -> (PthreadPool) {
-    let mut waiters = pool.mutex.waiters;
-    let mut mutex = MyMutex {
-        locked: false,
-        owner: None,
-        waiters: waiters
-    };
-    pool.mutex = mutex;
-    return pool
+pub(crate) unsafe fn my_mutex_lock(mut pool: PthreadPool) -> PthreadPool {
+    pool.mutex = Option::from(change_mutex_state(pool.mutex));
+    return (pool);
+}
+
+pub(crate) unsafe fn my_mutex_destroy(mut pool: PthreadPool) -> PthreadPool {
+    pool.mutex = None;
+    return pool;
 }
 
 //my_mutex_unlock
-pub(crate) fn my_mutex_unlock( mut pool: PthreadPool) -> (PthreadPool) {
-    if pool.mutex.waiters.len() > 0 {
-        let mut waiters = pool.mutex.waiters;
-        let mut new_owner = waiters.remove(0);
-        pool.mutex.owner = Some(new_owner);
-        pool.mutex.waiters = waiters;
-        return pool;
-    } else {
-        pool.mutex.locked = false;
-        pool.mutex.owner = None;
-        return pool;
-    }
+pub(crate) unsafe fn my_mutex_unlock(mut pool: PthreadPool) -> (PthreadPool) {
+    pool.mutex = Option::from(change_mutex_state(pool.mutex));
+    return (pool);
 }
 
 //my_mutex_trylock
-pub(crate) fn my_mutex_trylock(mut pool: PthreadPool) -> (PthreadPool) {
-    if pool.mutex.locked {
-        return pool;
-    } else {
-        pool.mutex.locked = true;
-        pool.mutex.owner = Some(pool.actual_thread[0].context);
-        return pool;
-    }
+pub(crate) unsafe fn my_mutex_trylock(mut pool: PthreadPool) -> (PthreadPool) {
+
+    pool.mutex = Option::from(change_mutex_state(pool.mutex));
+    return (pool);
 }

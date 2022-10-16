@@ -1,6 +1,6 @@
 use std::ptr::null;
 use libc::{clone, sched_param, ucontext_t};
-use crate::mutex::{MyMutex,my_mutex_init};
+use crate::mutex::{my_mutex_init};
 use crate::my_pthread::{MyPthread, schedulerEnum, states};
 
 #[derive(Clone)]
@@ -11,7 +11,7 @@ pub(crate) struct PthreadPool {
     pub(crate) lt_pthreads: Vec<MyPthread>,
     pub(crate) rt_pthreads: Vec<MyPthread>,
     pub(crate) actual_thread: Vec<MyPthread>,
-    pub(crate) mutex: MyMutex,
+    pub(crate) mutex: Option<bool>,
     pub(crate) serial: u32
 }impl PthreadPool {
     pub(crate) fn get_by_id(&self, id: u32) -> Option<&MyPthread> {
@@ -90,6 +90,35 @@ pub(crate) struct PthreadPool {
         }
         Some(index)
     }
+
+    pub(crate) fn get_active_threads_number(&self, sched: schedulerEnum) -> usize {
+        let mut count = 0;
+        match sched {
+            schedulerEnum::round_robin => {
+                for pthread in &self.rr_pthreads {
+                    if pthread.state == states::running || pthread.state == states::ready {
+                        count += 1;
+                    }
+                }
+            }
+            schedulerEnum::lottery => {
+                for pthread in &self.lt_pthreads {
+                    if pthread.state == states::running || pthread.state == states::ready {
+                        count += 1;
+                    }
+                }
+            }
+            schedulerEnum::real_time => {
+                for pthread in &self.rt_pthreads {
+                    if pthread.state == states::running || pthread.state == states::ready {
+                        count += 1;
+                    }
+                }
+            }
+        }
+        return count;
+
+    }
 }
 
 
@@ -102,7 +131,7 @@ pub(crate) fn create_pthread_pool() -> PthreadPool {
         lt_pthreads: Vec::new(),
         rt_pthreads: Vec::new(),
         actual_thread: Vec::new(),
-        mutex: my_mutex_init(),
+        mutex: Some(my_mutex_init()),
         serial: 0
     };
     return pool

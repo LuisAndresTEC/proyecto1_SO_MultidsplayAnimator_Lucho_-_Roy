@@ -23,6 +23,9 @@ fn main() {
     unsafe { pool = my_thread_create(1, pool, f1, schedulerEnum::real_time); }
     unsafe { pool = my_thread_create(2, pool, f1, schedulerEnum::real_time); }
     unsafe { pool = my_thread_create(4, pool, f1, schedulerEnum::lottery); }
+    unsafe { pool = my_thread_create(8, pool, f1, schedulerEnum::lottery); }
+    unsafe { pool = my_thread_create(5, pool, f1, schedulerEnum::lottery); }
+    unsafe { pool = my_thread_create(6, pool, f1, schedulerEnum::lottery); }
     //imprime el len de los treads en el pool
 
     println!("\n\nRound Robin Threads");
