@@ -34,14 +34,14 @@ pub(crate) unsafe fn my_mutex_destroy(mut pool: PthreadPool) -> PthreadPool {
 }
 
 //my_mutex_unlock
-pub(crate) unsafe fn my_mutex_unlock(mut pool: PthreadPool) -> (PthreadPool) {
+pub(crate) unsafe fn my_mutex_unlock(mut pool: PthreadPool) -> PthreadPool {
     pool.mutex = Option::from(change_mutex_state(pool.mutex));
-    return (pool);
+    return pool;
 }
 
 //my_mutex_trylock
-pub(crate) unsafe fn my_mutex_trylock(mut pool: PthreadPool) -> (PthreadPool) {
+pub(crate) unsafe fn my_mutex_trylock(mut pool: PthreadPool) -> PthreadPool {
 
     pool.mutex = Option::from(change_mutex_state(pool.mutex));
-    return (pool);
+    return pool;
 }

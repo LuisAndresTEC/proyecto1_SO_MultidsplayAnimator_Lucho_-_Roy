@@ -242,7 +242,7 @@ pub(crate) fn my_thread_end(mut pool: PthreadPool, index: usize) -> PthreadPool 
 }
 
 
-pub(crate) fn my_thread_change_sched(mut thread: MyPthread, scheduler: u32) -> MyPthread {
+pub(crate) fn my_thread_chsched(mut thread: MyPthread, scheduler: u32) -> MyPthread {
     match scheduler {
         0 => thread.sched = SchedulerEnum::RealTime,
         1 => thread.sched = SchedulerEnum::RoundRobin,
@@ -252,13 +252,4 @@ pub(crate) fn my_thread_change_sched(mut thread: MyPthread, scheduler: u32) -> M
     return thread
 }
 
-pub(crate) fn my_thread_state(mut thread: MyPthread, state: u32)-> MyPthread{
-    match state {
-        0 => thread.state = states::running,
-        1 => thread.state = states::ready,
-        2 => thread.state = states::blocked,
-        3 => thread.state = states::terminated,
-        _ => thread.state = states::ready
-    }
-    return thread
-}
+
