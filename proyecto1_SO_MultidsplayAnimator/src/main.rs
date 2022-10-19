@@ -115,6 +115,8 @@ fn main() {
 
 fn main(){
     let mut file = load_file();
-    let mut languaje = set_values(file);
+    let mut language = set_values(file);
+    println!("hola");
+
 
 }

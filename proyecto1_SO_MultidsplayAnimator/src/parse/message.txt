@@ -1,5 +1,6 @@
 begin
-100 100
+100
+100
 RoundRobin
 20
 10 10
@@ -13,7 +14,3 @@ RoundRobin
 |x|x|x|x|x| | |
 | | | |x| | | |
 end
-
-
-
-

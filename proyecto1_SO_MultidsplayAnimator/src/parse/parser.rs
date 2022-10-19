@@ -1,14 +1,20 @@
 use std::collections::HashMap;
 use std::fs::File;
-use std::io::Read;
+use std::io::prelude::*;
+use std::io::{BufReader, Read};
 #[path = "src/pthread/my_pthread"] use crate:: SchedulerEnum;
 
-//aqui se carga el contenido del txt
-pub(crate) fn load_file() -> String {
-    let mut file = File::open("src/parse/message.txt").expect("Unable to open file");
+//funcion que retorna un vector con todos los elementos de un archivo txt
+pub(crate) fn load_file() -> Vec<String> {
+    let mut file = File::open("parse/message.txt").expect("file not found");
     let mut contents = String::new();
-    file.read_to_string(&mut contents).expect("Unable to read file");
-    return contents;
+    file.read_to_string(&mut contents)
+        .expect("something went wrong reading the file");
+    let mut lines: Vec<String> = Vec::new();
+    for line in contents.lines() {
+        lines.push(line.to_string());
+    }
+    return lines;
 }
 
 
@@ -18,32 +24,57 @@ pub(crate) struct languaje {
     pub(crate) scheduler: SchedulerEnum,
     pub(crate) ascii:  Vec<String>,
     pub(crate) timeExecution: i32,
-    pub(crate) staryPosition: HashMap<i32,i32>,
-    pub(crate) endPosition: HashMap<i32,i32>,
+    pub(crate) staryPosition: Vec<i32>,
+    pub(crate) endPosition: Vec<i32>,
     pub(crate) rotationAngle: i32,
 }
-pub(crate) fn set_values(file: String)  {
-    let mut lines = file.lines();
-    let mut line = lines.next().unwrap();
-    let mut values = line.split_whitespace();
-   // values.remove(0);//quita la palabra inicio
-   // values.remove(values.len() - 1);//quita la palabra fin
-    //impresion de los valores
-    for value in values {
-        println!("{}", value);
+pub(crate) fn set_values(file: Vec<String>) -> languaje {
+    let mut startPosition = Vec::new();
+    let mut endPosition = Vec::new();
+
+    //se intoduce el indice 5 del file a start position como si fueran coordenadas
+    let mut start = file[5].split(" ");
+    let mut start_x = start.next().unwrap().parse::<i32>().unwrap();
+    let mut start_y = start.next().unwrap().parse::<i32>().unwrap();
+    startPosition.push(start_x);
+    startPosition.push(start_y);
+
+    //se intoduce el indice 6 del file a end position como si fueran coordenadas
+    let mut end = file[6].split(" ");
+    let mut end_x = end.next().unwrap().parse::<i32>().unwrap();
+    let mut end_y = end.next().unwrap().parse::<i32>().unwrap();
+    endPosition.push(end_x);
+    endPosition.push(end_y);
+
+    //se crea un vertor con todos los elementos del ascii
+    let mut ascii = Vec::new();
+    for i in 8..15{
+        ascii.push(file[i].to_string());
+    }
+    //se parcea de forma manual el nombre del scheduler
+    let mut scheduler;
+    if file[3].contains("RoundRobin") {
+        scheduler = SchedulerEnum::RoundRobin;
+    }else if file[3].contains("Lottery") {
+        scheduler = SchedulerEnum::Lottery;
+    }else {
+        scheduler = SchedulerEnum::RealTime;
     }
 
-    /*let mut languaje = languaje {
-        weigth:values.next().unwrap().parse().unwrap(),
-        higth: values.next().unwrap().parse().unwrap(),
-        scheduler: values.next().unwrap().parse().unwrap(),
-        ascii: values.next().unwrap().parse().unwrap(),
-        timeExecution: values.next().unwrap().parse().unwrap(),
-        staryPosition: values.next().unwrap().parse().unwrap(),
-        endPosition: values.next().unwrap().parse().unwrap(),
-        rotationAngle: values.next().unwrap().parse().unwrap(),
+
+    //se asignan los valores al struct
+    let mut languaje = languaje {
+        weigth: file[1].parse::<i32>().unwrap(),
+        higth: file[2].parse::<i32>().unwrap(),
+        scheduler: scheduler,
+        ascii: ascii,
+        timeExecution: file[4].parse::<i32>().unwrap(),
+        staryPosition: startPosition,
+        endPosition: endPosition,
+        rotationAngle: file[7].parse::<i32>().unwrap(),
     };
-    return languaje;*/
+
+    return languaje;
 }
 
 
