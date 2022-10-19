@@ -1,0 +1,19 @@
+begin
+100 100
+RoundRobin
+20
+10 10
+45 45
+180
+| | | |x| | | |
+|x|x|x|x|x| | |
+|x|x|x|x|x|x| |
+|x|x|x|x|x|x|x|
+|x|x|x|x|x|x| |
+|x|x|x|x|x| | |
+| | | |x| | | |
+end
+
+
+
+

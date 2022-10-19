@@ -1,1 +1,0 @@
-# proyecto1_SO_MultidsplayAnimator_Lucho_-_Roy

@@ -1,14 +1,18 @@
-mod my_pthread;
+#[path = "pthread/my_pthread.rs"]mod my_pthread;
+
+use libc::{getcontext, setcontext};
 use crate:: my_pthread::{my_thread_create, my_thread_end, SchedulerEnum};
-mod my_pthread_pool;
-mod my_schedulers;
-mod mutex;
+#[path = "pthread/my_pthread_pool.rs"]mod my_pthread_pool;
+#[path = "pthread/my_schedulers.rs"] mod my_schedulers;
+#[path = "pthread/mutex.rs"] mod mutex;
+#[path = "parse/parser.rs"] mod parser;
 
 
 use crate::my_pthread_pool::{create_pthread_pool};
 use crate::my_schedulers::scheduler_round_robin;
+use crate::parser::{load_file, set_values};
 
-
+/*
 extern "C" fn f1() {
     println!("INICIO 1");
     //unsafe{rb_thread::thread_yield(rb_thread::child_match(0), rb_thread::child_match(1));}
@@ -68,9 +72,10 @@ fn main() {
     unsafe { pool = my_thread_create(8, pool, f6, SchedulerEnum::Lottery); }
     unsafe { pool = my_thread_create(5, pool, f7, SchedulerEnum::Lottery); }
     unsafe { pool = my_thread_create(6, pool, f8, SchedulerEnum::Lottery); }
-    pool.actual_thread = Vec::new();
-    pool.actual_thread.push(pool.rr_pthreads[pool.rr_pthreads.len()-1].clone());
-    unsafe { pool = scheduler_round_robin(pool); }
+    //pool.actual_thread = Vec::new();
+    //pool.actual_thread.push(pool.rr_pthreads[pool.rr_pthreads.len()-1].clone());
+    //unsafe { getcontext(&mut pool.actual_thread[0].context); }
+    //unsafe { pool = scheduler_round_robin(pool); }
 
 
 
@@ -104,5 +109,12 @@ fn main() {
         println!("\t\tThread {} priority {}  \n\n ", pool.rr_pthreads[i].id, pool.rr_pthreads[i].priority,);
         //imprime informacion sobrelos contextos
     }
+
+}
+*/
+
+fn main(){
+    let mut file = load_file();
+    let mut languaje = set_values(file);
 
 }
