@@ -1,30 +1,32 @@
 use std::os::raw::c_uint;
-use crate::my_pthread::{my_thread_detach, my_thread_join, my_thread_yield, MyPthread, states};
-use crate::my_pthread_pool::{PthreadPool, remove_thread};
+use crate::my_pthread::{my_thread_detach, /*my_thread_join,*/ my_thread_yield, MyPthread, states};
+use crate::my_pthread_pool::{ remove_thread};
 use crate::SchedulerEnum;
 use rand::Rng;
 use std::time::Duration;
 use libc::{nanosleep, sleep};
+use crate::handler::HANDLER;
 use crate::mutex::my_mutex_unlock;
 use crate::SchedulerEnum::RoundRobin;
 
 
 //esta funcion no retorna nada, solo cambia el estado del hilo actual
-pub(crate) unsafe fn scheduler_round_robin(mut pool: PthreadPool) -> PthreadPool {
+pub(crate) unsafe fn scheduler_round_robin(mut handler: HANDLER) -> HANDLER {
     let quantum: i32 = 0.05 as i32;
-    while pool.get_active_threads_number(RoundRobin)> 0 {
-        pool = my_mutex_unlock(pool);
-        pool = my_thread_yield(pool.clone());
+    while handler.pthread_pool.get_active_threads_number(RoundRobin)> 0 {
+        handler = my_mutex_unlock(handler);
+        handler = my_thread_yield(handler);
         sleep(quantum as c_uint);
-        pool.actual_thread[0].finishing_validator();
+        handler.pthread_pool.actual_thread[0].finishing_validator();
     }
-    return pool;
+    return handler;
+
 }
 
 
-pub(crate) fn shortest_job_selector (mut pool: PthreadPool) -> MyPthread {
-    let mut shortest_job = pool.rt_pthreads[0].clone();
-    for pthread in pool.rt_pthreads {
+pub(crate) fn shortest_job_selector (mut handler: HANDLER) -> MyPthread {
+    let mut shortest_job = handler.pthread_pool.rt_pthreads[0].clone();
+    for pthread in handler.pthread_pool.rt_pthreads {
         if pthread.context.uc_stack.ss_size < shortest_job.context.uc_stack.ss_size && (pthread.state == states::ready || pthread.state == states::running) {
             shortest_job = pthread.clone();
         }
@@ -34,21 +36,22 @@ pub(crate) fn shortest_job_selector (mut pool: PthreadPool) -> MyPthread {
 
 //implementar el monotonic pag.521
 //EDF
-pub(crate) unsafe fn scheduler_real_time(mut pool: PthreadPool) -> PthreadPool {
+pub(crate) unsafe fn scheduler_real_time(mut handler: HANDLER) -> HANDLER {
     let quantum: i32 = 0.05 as i32;
-    while pool.get_active_threads_number(SchedulerEnum::RealTime)> 0 {
-        let mut next_thread = shortest_job_selector(pool.clone());
-        pool = my_mutex_unlock(pool.clone());
-        pool = my_thread_join(pool.clone() , pool.get_index_by_id(next_thread.id).unwrap());
+    while handler.pthread_pool.get_active_threads_number(SchedulerEnum::RealTime)> 0 {
+        let mut next_thread = shortest_job_selector(handler.clone());
+        handler = my_mutex_unlock(handler.clone());
+        //handler.pthread_pool = my_thread_join(handler.pthread_pool.clone() , handler.pthread_pool.get_index_by_id(next_thread.id).unwrap());
         sleep(quantum as c_uint);
-        pool.actual_thread[0].finishing_validator();
+        handler.pthread_pool.actual_thread[0].finishing_validator();
     }
-    return pool;
+    return handler;
+
 }
 
 
 
-pub(crate) unsafe fn scheduler_lottery(mut pool: PthreadPool) -> PthreadPool {
+pub(crate) unsafe fn scheduler_lottery(mut handler: HANDLER) -> HANDLER {
     //se crean los objetos ticket y tombola los cuales se van a utilizar para determinar el hilo a procesar
     #[derive(Clone)]
     pub struct ticket {
@@ -67,7 +70,7 @@ pub(crate) unsafe fn scheduler_lottery(mut pool: PthreadPool) -> PthreadPool {
     };
 
     //se agregan los tickets a la tombola
-    for thread in &pool.lt_pthreads {
+    for thread in &handler.pthread_pool.lt_pthreads {
         for _ in 0..thread.priority {
             tombola.tickets.push(ticket {
                 ticket_number: tombola.serial.clone() as u32,
@@ -81,14 +84,14 @@ pub(crate) unsafe fn scheduler_lottery(mut pool: PthreadPool) -> PthreadPool {
     //ciclo
     let indice_ticket = rng.gen_range(0..tombola.tickets.len());
     let mut winner = tombola.tickets[indice_ticket].clone();
-    let mut next_thread = pool.get_by_id(winner.thread_id).unwrap().clone();
+    let mut next_thread = handler.pthread_pool.get_by_id(winner.thread_id).unwrap().clone();
     tombola.tickets.remove(indice_ticket);
     if next_thread.state == states::ready {
-        pool = my_mutex_unlock(pool.clone());
-        pool = my_thread_join(pool.clone() , pool.get_index_by_id(next_thread.id).unwrap());
-        pool.actual_thread[0].finishing_validator();
+        handler = my_mutex_unlock(handler);
+        //handler.pthread_pool = my_thread_join(handler.pthread_pool.clone() , handler.pthread_pool.get_index_by_id(next_thread.id).unwrap());
+        handler.pthread_pool.actual_thread[0].finishing_validator();
     }
-    return pool;
+    return handler;
 }
 
 

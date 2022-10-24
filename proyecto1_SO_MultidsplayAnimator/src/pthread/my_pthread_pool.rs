@@ -1,3 +1,4 @@
+use std::mem;
 use std::ptr::null;
 use libc::{clone, sched_param, ucontext_t};
 use crate::mutex::{my_mutex_init};
@@ -5,14 +6,15 @@ use crate::my_pthread::{MyPthread, SchedulerEnum, states};
 
 #[derive(Clone)]
 pub(crate) struct PthreadPool {
-    pub(crate) scheduler: SchedulerEnum,
     //pub(crate) pthreads: Vec<MyPthread>,
     pub(crate) rr_pthreads: Vec<MyPthread>,
     pub(crate) lt_pthreads: Vec<MyPthread>,
     pub(crate) rt_pthreads: Vec<MyPthread>,
     pub(crate) actual_thread: Vec<MyPthread>,
-    pub(crate) mutex: Option<bool>,
-    pub(crate) serial: u32
+    pub(crate) actual_context: Vec<Option<ucontext_t>>,
+    pub(crate) rr_contexts: Vec<Option<ucontext_t>>,
+    pub(crate) lt_contexts: Vec<Option<ucontext_t>>,
+    pub(crate) rt_contexts: Vec<Option<ucontext_t>>,
 }impl PthreadPool {
     pub(crate) fn get_by_id(&self, id: u32) -> Option<&MyPthread> {
         for pthread in &self.rr_pthreads {
@@ -117,22 +119,48 @@ pub(crate) struct PthreadPool {
             }
         }
         return count;
-
     }
 }
+pub(crate) fn state_validation(state: states , thread: MyPthread) -> bool {
+    match state {
+        states::running => {
+            if thread.state == states::ready {
+                return true;
+            }
+        }
+        states::ready => {
+            if thread.state == states::running {
+                return true;
+            }
+        }
+        states::blocked => {
+            if thread.state == states::running {
+                return true;
+            }
+        }
+        states::terminated => {
+            if thread.state == states::running {
+                return true;
+            }
+        }
+        _ => {}
+    }
+    return false;
+    }
+
 
 
 
 pub(crate) fn create_pthread_pool() -> PthreadPool {
     let mut pool = PthreadPool {
-        scheduler: SchedulerEnum::RoundRobin,
-        //pthreads: Vec::new(),
         rr_pthreads: Vec::new(),
         lt_pthreads: Vec::new(),
         rt_pthreads: Vec::new(),
         actual_thread: Vec::new(),
-        mutex: Some(my_mutex_init()),
-        serial: 0
+        actual_context: Vec::new(),
+        rr_contexts: Vec::new(),
+        lt_contexts: Vec::new(),
+        rt_contexts: Vec::new(),
     };
     return pool
 }
@@ -143,16 +171,19 @@ pub(crate) fn remove_thread(mut pool: PthreadPool,mut thread_id: usize) -> Pthre
         SchedulerEnum::RoundRobin => {
             if pool.rr_pthreads[pool.get_index_by_id(thread_id as u32).unwrap()].id == thread_id as u32 {
                 pool.rr_pthreads.remove(pool.get_index_by_id(thread_id as u32).unwrap());
+                pool.rr_contexts.remove(pool.get_index_by_id(thread_id as u32).unwrap());
             }
         }
         SchedulerEnum::Lottery => {
             if pool.lt_pthreads[pool.get_index_by_id(thread_id as u32).unwrap()].id == thread_id as u32 {
                 pool.lt_pthreads.remove(pool.get_index_by_id(thread_id as u32).unwrap());
+                pool.lt_contexts.remove(pool.get_index_by_id(thread_id as u32).unwrap());
             }
         }
         SchedulerEnum::RealTime => {
             if pool.rt_pthreads[pool.get_index_by_id(thread_id as u32).unwrap()].id == thread_id as u32 {
                 pool.rt_pthreads.remove(pool.get_index_by_id(thread_id as u32).unwrap());
+                pool.rt_contexts.remove(pool.get_index_by_id(thread_id as u32).unwrap());
             }
         }
     }
@@ -160,7 +191,3 @@ pub(crate) fn remove_thread(mut pool: PthreadPool,mut thread_id: usize) -> Pthre
 }
 
 
-pub(crate) fn change_scheduler(mut pool: PthreadPool, scheduler: SchedulerEnum) -> PthreadPool {
-    pool.scheduler = scheduler;
-    return pool
-}

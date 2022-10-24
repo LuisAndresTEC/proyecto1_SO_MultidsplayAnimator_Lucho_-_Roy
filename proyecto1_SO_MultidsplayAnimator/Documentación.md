@@ -52,3 +52,7 @@ En esta sección se puede detallar que en el código las principales estructuras
 -  `my_mutex_destroy(mut pool: PthreadPool) -> PthreadPool`:Esta función es la encargada de la destrucción y eliminación del mutex
 -  `my_mutex_unlock(mut pool: PthreadPool) -> PthreadPool`:Esta función es la encargada del desbloqueo del mutex
 -  `my_mutex_trylock(mut pool: PthreadPool) -> PthreadPool`:Esta función es la encargada de bloquear el mutex en caso de que ya no lo esté.
+
+#### Parser:
+
+- 
