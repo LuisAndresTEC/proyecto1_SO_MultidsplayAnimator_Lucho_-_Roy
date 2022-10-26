@@ -5,6 +5,9 @@ use libc::{c_char, swapcontext, makecontext, getcontext, ucontext_t, c_void, set
 use crate::create_pthread_pool;
 use crate::handler::{HANDLER, origin_match, secondary_match, set_parent_context};
 
+pub static mut CURRENT_THREAD: *mut ucontext_t = 0 as *mut ucontext_t;
+pub static mut EXIT_CONTEXT: *mut ucontext_t = 0 as *mut ucontext_t;
+
 //este objeto es thread sobre el cual se va a trabajar
 #[derive(Clone, Copy)]
 pub(crate) struct MyPthread {
@@ -130,8 +133,10 @@ pub(crate) unsafe fn my_thread_yield(mut handler: HANDLER) -> HANDLER {
     if handler.mutex {
         panic!("No se puede hacer yield porque el mutex esta bloqueado");
     }else{
-        swapcontext(origin_match() as *mut ucontext_t, secondary_match(0 , handler.clone()) as *const ucontext_t);
         set_parent_context(0,handler.clone());
+        CURRENT_THREAD = &mut handler.pthread_pool.rr_contexts[0].clone().unwrap();
+        swapcontext(origin_match() as *mut ucontext_t, secondary_match(0 , handler.clone()) as *const ucontext_t);
+        //set_parent_context(0,handler.clone());
         handler = my_mutex_lock(handler.clone());
         match handler.pthread_pool.actual_thread[0].sched {
             SchedulerEnum::RealTime => {
@@ -165,7 +170,7 @@ pub(crate) fn my_thread_detach(mut thread: MyPthread, mut handler: HANDLER) -> H
     if thread.state == states:: detached || thread.state == states::terminated || thread.state == states::blocked {
         panic!("El thread no puede ser detached");
     }else{
-        let mut index = handler.pthread_pool.get_index_by_id(thread.id).unwrap();
+        let mut index = handler.pthread_pool.get_index_by_id(thread.id);
         match thread.sched {
             SchedulerEnum::RoundRobin => unsafe {
                 swapcontext(origin_match() as *mut ucontext_t, secondary_match(index , handler.clone()) as *const ucontext_t);
@@ -200,68 +205,67 @@ pub(crate) unsafe fn my_thread_join(mut handler: HANDLER, mut index: usize) -> H
                 state_validation(states::running, handler.pthread_pool.rr_pthreads[0]) {
                 thread_update = handler.pthread_pool.rr_pthreads[index];
                 context_update = handler.pthread_pool.rr_contexts[index];
-                thread_update.state = states::running;
-                handler.pthread_pool.rr_pthreads.remove(index);
-                handler.pthread_pool.rr_contexts.remove(index);
-
+                thread_update.state = states::terminated;
             }
         }
         SchedulerEnum::Lottery => {
             if state_validation(states::ready, handler.pthread_pool.rr_pthreads[0]) ||
                 state_validation(states::running, handler.pthread_pool.rr_pthreads[0]) {
-                thread_update = handler.pthread_pool.lt_pthreads[index ];
-                context_update = handler.pthread_pool.lt_contexts[index ];
-                thread_update.state = states::running;
-                handler.pthread_pool.lt_pthreads.remove(index );
-                handler.pthread_pool.lt_contexts.remove(index );
+                thread_update = handler.pthread_pool.lt_pthreads[index];
+                context_update = handler.pthread_pool.lt_contexts[index];
+                thread_update.state = states::terminated;
+
             }
         }
         SchedulerEnum::RealTime => {
             if state_validation(states::ready, handler.pthread_pool.rr_pthreads[0]) ||
                 state_validation(states::running, handler.pthread_pool.rr_pthreads[0]) {
-                thread_update = handler.pthread_pool.rt_pthreads[index ];
-                context_update = handler.pthread_pool.rt_contexts[index ];
-                thread_update.state = states::running;
-                handler.pthread_pool.rt_pthreads.remove(index );
-                handler.pthread_pool.rt_contexts.remove(index );
+                thread_update = handler.pthread_pool.rt_pthreads[index];
+                context_update = handler.pthread_pool.rt_contexts[index];
+                thread_update.state = states::terminated;
+
             }
         }
     }
-    if thread_update.id == handler.pthread_pool.actual_thread[0].id {
-        panic!("No hay contextos disponibes");
-    }else{
+
         if handler.mutex {
             panic!("No se puede hacer join porque el mutex esta bloqueado");
         }else {
-
+            CURRENT_THREAD = &mut handler.pthread_pool.rr_contexts[index].clone().unwrap();
             swapcontext(origin_match() as *mut ucontext_t, secondary_match(index , handler.clone()) as *const ucontext_t);
             handler = my_mutex_lock(handler.clone());
             match handler.pthread_pool.actual_thread[0].sched {
                 SchedulerEnum::RealTime => {
-                    handler.pthread_pool.rt_pthreads.push(handler.pthread_pool.actual_thread[0].clone());
-                    handler.pthread_pool.rt_contexts.push(handler.pthread_pool.actual_context[0].clone());
+                    /*handler.pthread_pool.rt_pthreads.push(handler.pthread_pool.actual_thread[0].clone());
+                    handler.pthread_pool.rt_contexts.push(handler.pthread_pool.actual_context[0].clone());*/
+                    handler.pthread_pool.rt_pthreads.remove(index);
+                    handler.pthread_pool.rt_contexts.remove(index);
                 }
                 SchedulerEnum::RoundRobin => {
-                    handler.pthread_pool.rr_pthreads.push(handler.pthread_pool.actual_thread[0].clone());
-                    handler.pthread_pool.rr_contexts.push(handler.pthread_pool.actual_context[0].clone());
+                    /*handler.pthread_pool.rr_pthreads.push(handler.pthread_pool.actual_thread[0].clone());
+                    handler.pthread_pool.rr_contexts.push(handler.pthread_pool.actual_context[0].clone());*/
+                    handler.pthread_pool.rr_pthreads.remove(index);
+                    handler.pthread_pool.rr_contexts.remove(index);
                 }
                 SchedulerEnum::Lottery => {
-                    handler.pthread_pool.lt_pthreads.push(handler.pthread_pool.actual_thread[0].clone());
-                    handler.pthread_pool.lt_contexts.push(handler.pthread_pool.actual_context[0].clone());
+                    /*handler.pthread_pool.lt_pthreads.push(handler.pthread_pool.actual_thread[0].clone());
+                    handler.pthread_pool.lt_contexts.push(handler.pthread_pool.actual_context[0].clone());*/
+                    handler.pthread_pool.lt_pthreads.remove(index);
+                    handler.pthread_pool.lt_contexts.remove(index);
                 }
             }
             handler.pthread_pool.actual_thread[0] = thread_update.clone();
             handler.pthread_pool.actual_context[0] = context_update.clone();
             return handler;
         }
-    }
+
 
 }
 
 
 
 pub(crate) fn my_thread_end(mut handler: HANDLER, index: usize) -> HANDLER {
-    handler.pthread_pool = remove_thread(handler.pthread_pool, index);
+    handler = remove_thread(handler, index);
     return handler
 }
 
@@ -269,9 +273,9 @@ pub(crate) fn my_thread_end(mut handler: HANDLER, index: usize) -> HANDLER {
 
 pub(crate) fn my_thread_chsched(mut thread: MyPthread, scheduler: u32) -> MyPthread {
     match scheduler {
-        0 => thread.sched = SchedulerEnum::RealTime,
         1 => thread.sched = SchedulerEnum::RoundRobin,
         2 => thread.sched = SchedulerEnum::Lottery,
+        3 => thread.sched = SchedulerEnum::RealTime,
         _ => thread.sched = SchedulerEnum::RoundRobin
     }
     return thread

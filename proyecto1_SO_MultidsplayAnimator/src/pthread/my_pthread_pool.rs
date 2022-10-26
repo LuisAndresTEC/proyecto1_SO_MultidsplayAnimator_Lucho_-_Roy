@@ -1,11 +1,12 @@
 use std::mem;
 use std::ptr::null;
 use libc::{clone, sched_param, ucontext_t};
+use crate::handler::HANDLER;
 use crate::mutex::{my_mutex_init};
 use crate::my_pthread::{MyPthread, SchedulerEnum, states};
 
 #[derive(Clone)]
-pub(crate) struct HANDLER {
+pub(crate) struct PtheadPool {
     //pub(crate) pthreads: Vec<MyPthread>,
     pub(crate) rr_pthreads: Vec<MyPthread>,
     pub(crate) lt_pthreads: Vec<MyPthread>,
@@ -15,7 +16,7 @@ pub(crate) struct HANDLER {
     pub(crate) rr_contexts: Vec<Option<ucontext_t>>,
     pub(crate) lt_contexts: Vec<Option<ucontext_t>>,
     pub(crate) rt_contexts: Vec<Option<ucontext_t>>,
-}impl HANDLER {
+}impl PtheadPool {
     pub(crate) fn get_by_id(&self, id: u32) -> Option<&MyPthread> {
         for pthread in &self.rr_pthreads {
             if pthread.id == id {
@@ -34,23 +35,23 @@ pub(crate) struct HANDLER {
         }
         None
     }
-    pub(crate) fn get_index_by_id(&self, id: u32) -> Option<usize> {
+    pub(crate) fn get_index_by_id(&self, id: u32) -> usize {
         for (i, pthread) in self.rr_pthreads.iter().enumerate() {
             if pthread.id == id {
-                return Some(i);
+                return i;
             }
         }
         for (i, pthread) in self.lt_pthreads.iter().enumerate() {
             if pthread.id == id {
-                return Some(i);
+                return i;
             }
         }
         for (i, pthread) in self.rt_pthreads.iter().enumerate() {
             if pthread.id == id {
-                return Some(i);
+                return i;
             }
         }
-        None
+        return 200;
     }
     //metodo que me dice la cantidad de threads en un determinado estado en una de las listas del pool
     pub(crate) fn get_count_by_state(&self, state: states, sched: SchedulerEnum) -> u32 {
@@ -151,8 +152,8 @@ pub(crate) fn state_validation(state: states , thread: MyPthread) -> bool {
 
 
 
-pub(crate) fn create_pthread_pool() -> HANDLER {
-    let mut pool = HANDLER {
+pub(crate) fn create_pthread_pool() -> PtheadPool {
+    let mut pool = PtheadPool {
         rr_pthreads: Vec::new(),
         lt_pthreads: Vec::new(),
         rt_pthreads: Vec::new(),
@@ -165,29 +166,29 @@ pub(crate) fn create_pthread_pool() -> HANDLER {
     return pool
 }
 
-pub(crate) fn remove_thread(mut pool: HANDLER, mut thread_id: usize) -> HANDLER {
-    let mut thread = pool.get_by_id(thread_id as u32).unwrap().clone();
+pub(crate) fn remove_thread(mut handler: HANDLER, mut thread_id: usize) -> HANDLER {
+    let mut thread = handler.pthread_pool.get_by_id(thread_id as u32).unwrap().clone();
     match thread.sched {
         SchedulerEnum::RoundRobin => {
-            if pool.rr_pthreads[pool.get_index_by_id(thread_id as u32).unwrap()].id == thread_id as u32 {
-                pool.rr_pthreads.remove(pool.get_index_by_id(thread_id as u32).unwrap());
-                pool.rr_contexts.remove(pool.get_index_by_id(thread_id as u32).unwrap());
+            if handler.pthread_pool.rr_pthreads[handler.pthread_pool.get_index_by_id(thread_id as u32)].id == thread_id as u32 {
+                handler.pthread_pool.rr_pthreads.remove(handler.pthread_pool.get_index_by_id(thread_id as u32));
+                handler.pthread_pool.rr_contexts.remove(handler.pthread_pool.get_index_by_id(thread_id as u32));
             }
         }
         SchedulerEnum::Lottery => {
-            if pool.lt_pthreads[pool.get_index_by_id(thread_id as u32).unwrap()].id == thread_id as u32 {
-                pool.lt_pthreads.remove(pool.get_index_by_id(thread_id as u32).unwrap());
-                pool.lt_contexts.remove(pool.get_index_by_id(thread_id as u32).unwrap());
+            if handler.pthread_pool.lt_pthreads[handler.pthread_pool.get_index_by_id(thread_id as u32)].id == thread_id as u32 {
+                handler.pthread_pool.lt_pthreads.remove(handler.pthread_pool.get_index_by_id(thread_id as u32));
+                handler.pthread_pool.lt_contexts.remove(handler.pthread_pool.get_index_by_id(thread_id as u32));
             }
         }
         SchedulerEnum::RealTime => {
-            if pool.rt_pthreads[pool.get_index_by_id(thread_id as u32).unwrap()].id == thread_id as u32 {
-                pool.rt_pthreads.remove(pool.get_index_by_id(thread_id as u32).unwrap());
-                pool.rt_contexts.remove(pool.get_index_by_id(thread_id as u32).unwrap());
+            if handler.pthread_pool.rt_pthreads[handler.pthread_pool.get_index_by_id(thread_id as u32)].id == thread_id as u32 {
+                handler.pthread_pool.rt_pthreads.remove(handler.pthread_pool.get_index_by_id(thread_id as u32));
+                handler.pthread_pool.rt_contexts.remove(handler.pthread_pool.get_index_by_id(thread_id as u32));
             }
         }
     }
-    return pool
+    return handler;
 }
 
 

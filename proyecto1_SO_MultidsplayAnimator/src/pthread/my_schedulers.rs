@@ -40,10 +40,11 @@ pub(crate) unsafe fn scheduler_real_time(mut handler: HANDLER) -> HANDLER {
     let quantum: i32 = 0.05 as i32;
     while handler.pthread_pool.get_active_threads_number(SchedulerEnum::RealTime)> 0 {
         let mut next_thread = shortest_job_selector(handler.clone());
+        //se cambia el estado del thread actual a running
         handler = my_mutex_unlock(handler.clone());
-        handler = my_thread_join(handler.clone() , handler.pthread_pool.get_index_by_id(next_thread.id).unwrap());
+        handler = my_thread_join(handler.clone() , handler.pthread_pool.get_index_by_id(next_thread.id));
         sleep(quantum as c_uint);
-        handler.pthread_pool.actual_thread[0].finishing_validator();
+
     }
     return handler;
 
@@ -82,14 +83,18 @@ pub(crate) unsafe fn scheduler_lottery(mut handler: HANDLER) -> HANDLER {
 
     let mut rng = rand::thread_rng();
     //ciclo
-    let indice_ticket = rng.gen_range(0..tombola.tickets.len());
-    let mut winner = tombola.tickets[indice_ticket].clone();
-    let mut next_thread = handler.pthread_pool.get_by_id(winner.thread_id).unwrap().clone();
-    tombola.tickets.remove(indice_ticket);
-    if next_thread.state == states::ready {
-        handler = my_mutex_unlock(handler);
-        handler = my_thread_join(handler.clone(), handler.pthread_pool.get_index_by_id(next_thread.id).unwrap());
-        handler.pthread_pool.actual_thread[0].finishing_validator();
+    while  handler.pthread_pool.get_active_threads_number(SchedulerEnum::Lottery)> 0 {
+        let indice_ticket = rng.gen_range(0..tombola.tickets.len());
+        let mut winner = tombola.tickets[indice_ticket].clone();
+        let mut index = handler.pthread_pool.get_index_by_id(winner.thread_id);
+        let mut next_thread = handler.pthread_pool.lt_pthreads[index].clone();
+        //se eliminan de la tombola todos los tiketes del ganador
+        tombola.tickets.retain(|x| x.thread_id != winner.thread_id);
+        if next_thread.state == states::ready {
+            handler = my_mutex_unlock(handler);
+            handler = my_thread_join(handler.clone(), handler.pthread_pool.get_index_by_id(next_thread.id));
+            handler.pthread_pool.actual_thread[0].finishing_validator();
+        }
     }
     return handler;
 }

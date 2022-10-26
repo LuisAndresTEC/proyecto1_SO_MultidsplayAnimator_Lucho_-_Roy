@@ -1,10 +1,10 @@
 #[path = "pthread/my_pthread.rs"]
 pub(crate) mod my_pthread;
 
-use libc::{getcontext, setcontext};
+use libc::{getcontext, setcontext, swapcontext};
 use crate:: my_pthread::{my_thread_create,  SchedulerEnum};
 use crate::handler::create_handler;
-use crate::my_pthread::my_thread_end;
+use crate::my_pthread::{CURRENT_THREAD, EXIT_CONTEXT, my_thread_end};
 
 #[path = "pthread/my_pthread_pool.rs"]
 pub(crate) mod my_pthread_pool;
@@ -24,141 +24,124 @@ extern "C" fn f1() {
     println!("INICIO 1");
     //unsafe{rb_thread::thread_yield(rb_thread::child_match(0), rb_thread::child_match(1));}
     println!("FIN 1");
+    unsafe{
+        swapcontext(CURRENT_THREAD, EXIT_CONTEXT);}
 }
 
 extern "C" fn f2() {
     println!("INICIO 2");
     //unsafe{rb_thread::thread_yield(rb_thread::child_match(1), rb_thread::child_match(2));}
     println!("FIN 2");
+    unsafe{
+        swapcontext(CURRENT_THREAD, EXIT_CONTEXT);}
 }
 
 extern "C" fn f3() {
     println!("INICIO 3");
     //unsafe{rb_thread::thread_yield(rb_thread::child_match(2), rb_thread::child_match(0));}
     println!("FIN 3");
+    unsafe{
+        swapcontext(CURRENT_THREAD, EXIT_CONTEXT);}
 }
 
 extern "C" fn f4() {
     println!("INICIO 4");
     //unsafe{rb_thread::thread_yield(rb_thread::child_match(2), rb_thread::child_match(0));}
     println!("FIN 4");
+    unsafe{
+        swapcontext(CURRENT_THREAD, EXIT_CONTEXT);}
 }
 
 extern "C" fn f5() {
     println!("INICIO 5");
     //unsafe{rb_thread::thread_yield(rb_thread::child_match(2), rb_thread::child_match(0));}
     println!("FIN 5");
+    unsafe{
+        swapcontext(CURRENT_THREAD, EXIT_CONTEXT);}
 }
 
 extern "C" fn f6() {
     println!("INICIO 6");
     //unsafe{rb_thread::thread_yield(rb_thread::child_match(2), rb_thread::child_match(0));}
     println!("FIN 6");
+    unsafe{
+        swapcontext(CURRENT_THREAD, EXIT_CONTEXT);}
 }
 
 extern "C" fn f7() {
     println!("INICIO 7");
     //unsafe{rb_thread::thread_yield(rb_thread::child_match(2), rb_thread::child_match(0));}
     println!("FIN 7");
+    unsafe{
+        swapcontext(CURRENT_THREAD, EXIT_CONTEXT);}
 }
 
 extern "C" fn f8() {
     println!("INICIO 8");
     //unsafe{rb_thread::thread_yield(rb_thread::child_match(2), rb_thread::child_match(0));}
     println!("FIN 8");
+    unsafe{
+        swapcontext(CURRENT_THREAD, EXIT_CONTEXT);}
 }
 
 extern "C" fn f9() {
     println!("INICIO 9");
     //unsafe{rb_thread::thread_yield(rb_thread::child_match(2), rb_thread::child_match(0));}
     println!("FIN 9");
+    unsafe{
+        swapcontext(CURRENT_THREAD, EXIT_CONTEXT);}
 }
 
 extern "C" fn f10() {
     println!("INICIO 10");
     //unsafe{rb_thread::thread_yield(rb_thread::child_match(2), rb_thread::child_match(0));}
     println!("FIN 10");
+    unsafe{
+        swapcontext(CURRENT_THREAD, EXIT_CONTEXT);}
 }
 
 
 fn main() {
-    let mut file = load_file();
-    let mut language = set_values(file);
-    let mut handler = unsafe { create_handler() };
+    unsafe {
+        let mut file = load_file();
+        let mut language = set_values(file);
+        let mut handler = unsafe { create_handler() };
 
 
-    unsafe { handler = my_thread_create(3, handler, f1, SchedulerEnum::RoundRobin); }
-    unsafe { handler = my_thread_create(7, handler, f2, SchedulerEnum::RoundRobin); }
-    unsafe { handler = my_thread_create(1, handler, f3, SchedulerEnum::RoundRobin); }
-    unsafe { handler = my_thread_create(2, handler, f4, SchedulerEnum::RoundRobin); }
-    unsafe { handler = my_thread_create(2, handler, f5, SchedulerEnum::RealTime); }
-    unsafe { handler = my_thread_create(2, handler, f6, SchedulerEnum::RealTime); }
-    unsafe { handler = my_thread_create(2, handler, f10, SchedulerEnum::RealTime); }
-    unsafe { handler = my_thread_create(4, handler, f7, SchedulerEnum::Lottery); }
-    unsafe { handler = my_thread_create(8, handler, f8, SchedulerEnum::Lottery); }
-    unsafe { handler = my_thread_create(5, handler, f9, SchedulerEnum::Lottery); }
-    if handler.pthread_pool.actual_thread.is_empty(){
-        match handler.scheduler {
-            SchedulerEnum::RoundRobin => {
-                handler.pthread_pool.actual_thread.push(handler.pthread_pool.rr_pthreads.last().unwrap().clone());
-                handler.pthread_pool.actual_context.push(handler.pthread_pool.rr_contexts.last().unwrap().clone());
-                handler.pthread_pool.rr_pthreads.pop();
-                handler.pthread_pool.rr_contexts.pop();
-            }
-            SchedulerEnum::RealTime => {
-                handler.pthread_pool.actual_thread.push(handler.pthread_pool.rt_pthreads.last().unwrap().clone());
-                handler.pthread_pool.actual_context.push(handler.pthread_pool.rt_contexts.last().unwrap().clone());
-                handler.pthread_pool.rt_pthreads.pop();
-                handler.pthread_pool.rt_contexts.pop();
-            }
-            SchedulerEnum::Lottery => {
-                handler.pthread_pool.actual_thread.push(handler.pthread_pool.lt_pthreads.last().unwrap().clone());
-                handler.pthread_pool.actual_context.push(handler.pthread_pool.lt_contexts.last().unwrap().clone());
-                handler.pthread_pool.lt_pthreads.pop();
-                handler.pthread_pool.lt_contexts.pop();
+        unsafe { handler = my_thread_create(3, handler, f1, SchedulerEnum::RoundRobin); }
+        unsafe { handler = my_thread_create(7, handler, f2, SchedulerEnum::RoundRobin); }
+        unsafe { handler = my_thread_create(1, handler, f3, SchedulerEnum::RoundRobin); }
+        unsafe { handler = my_thread_create(2, handler, f4, SchedulerEnum::RoundRobin); }
+        unsafe { handler = my_thread_create(2, handler, f5, SchedulerEnum::RealTime); }
+        unsafe { handler = my_thread_create(3, handler, f6, SchedulerEnum::RealTime); }
+        unsafe { handler = my_thread_create(2, handler, f7, SchedulerEnum::RealTime); }
+        unsafe { handler = my_thread_create(4, handler, f8, SchedulerEnum::Lottery); }
+        unsafe { handler = my_thread_create(8, handler, f9, SchedulerEnum::Lottery); }
+        unsafe { handler = my_thread_create(5, handler, f10, SchedulerEnum::Lottery); }
+        if handler.pthread_pool.actual_thread.is_empty() {
+            match handler.scheduler {
+                SchedulerEnum::RoundRobin => {
+                    handler.pthread_pool.actual_thread.push(handler.pthread_pool.rr_pthreads.last().unwrap().clone());
+                    handler.pthread_pool.actual_context.push(handler.pthread_pool.rr_contexts.last().unwrap().clone());
+                    // handler.pthread_pool.rr_pthreads.pop();
+                    //handler.pthread_pool.rr_contexts.pop();
+                }
+                SchedulerEnum::RealTime => {
+                    handler.pthread_pool.actual_thread.push(handler.pthread_pool.rt_pthreads.last().unwrap().clone());
+                    handler.pthread_pool.actual_context.push(handler.pthread_pool.rt_contexts.last().unwrap().clone());
+                    //handler.pthread_pool.rt_pthreads.pop();
+                    //handler.pthread_pool.rt_contexts.pop();
+                }
+                SchedulerEnum::Lottery => {
+                    handler.pthread_pool.actual_thread.push(handler.pthread_pool.lt_pthreads.last().unwrap().clone());
+                    handler.pthread_pool.actual_context.push(handler.pthread_pool.lt_contexts.last().unwrap().clone());
+                    //handler.pthread_pool.lt_pthreads.pop();
+                    //handler.pthread_pool.lt_contexts.pop();
+                }
             }
         }
-
+        handler.__run_threads__();
     }
-    handler.__run_threads__();
-
-
-
-/*
-    //imprime el len de los treads en el pool
-
-    println!("\n\nRound Robin Threads");
-    for i in 0..handler.pthread_pool.rr_pthreads.len() {
-
-        println!("\t\tThread {} priority {}  \n\n ", handler.rr_pthreads[i].id, handler.rr_pthreads[i].priority,);
-        //imprime informacion sobrelos contextos
-    }
-    println!("\n\nReal Time Threads");
-    for i in 0..handler.rt_pthreads.len() {
-
-        println!("\t\tThread {} priority {}  \n\n ", handler.rt_pthreads[i].id, handler.rt_pthreads[i].priority,);
-        //imprime informacion sobrelos contextos
-    }
-    println!("\n\nLottery Threads");
-    for i in 0..handler.lt_pthreads.len() {
-
-        println!("\t\tThread {} priority {}  \n\n ", handler.lt_pthreads[i].id, handler.lt_pthreads[i].priority,);
-        //imprime informacion sobrelos contextos
-    }
-    //Elimina un thread del pool
-    handler.pthread_pool = my_thread_end(handler.pthread_pool, 0);
-    println!("---------------------Ya se eliminó el thread 0---------------------");
-    //imprime el len de los treads en el pool
-    println!("\n\nRound Robin Threads");
-    for i in 0..handler.rr_pthreads.len() {
-
-        println!("\t\tThread {} priority {}  \n\n ", handler.rr_pthreads[i].id, handler.rr_pthreads[i].priority,);
-        //imprime informacion sobrelos contextos
-    }*/
-
 }
-
-
-
 
 
