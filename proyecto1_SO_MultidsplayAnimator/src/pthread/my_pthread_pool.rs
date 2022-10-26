@@ -5,7 +5,7 @@ use crate::mutex::{my_mutex_init};
 use crate::my_pthread::{MyPthread, SchedulerEnum, states};
 
 #[derive(Clone)]
-pub(crate) struct PthreadPool {
+pub(crate) struct HANDLER {
     //pub(crate) pthreads: Vec<MyPthread>,
     pub(crate) rr_pthreads: Vec<MyPthread>,
     pub(crate) lt_pthreads: Vec<MyPthread>,
@@ -15,7 +15,7 @@ pub(crate) struct PthreadPool {
     pub(crate) rr_contexts: Vec<Option<ucontext_t>>,
     pub(crate) lt_contexts: Vec<Option<ucontext_t>>,
     pub(crate) rt_contexts: Vec<Option<ucontext_t>>,
-}impl PthreadPool {
+}impl HANDLER {
     pub(crate) fn get_by_id(&self, id: u32) -> Option<&MyPthread> {
         for pthread in &self.rr_pthreads {
             if pthread.id == id {
@@ -151,8 +151,8 @@ pub(crate) fn state_validation(state: states , thread: MyPthread) -> bool {
 
 
 
-pub(crate) fn create_pthread_pool() -> PthreadPool {
-    let mut pool = PthreadPool {
+pub(crate) fn create_pthread_pool() -> HANDLER {
+    let mut pool = HANDLER {
         rr_pthreads: Vec::new(),
         lt_pthreads: Vec::new(),
         rt_pthreads: Vec::new(),
@@ -165,7 +165,7 @@ pub(crate) fn create_pthread_pool() -> PthreadPool {
     return pool
 }
 
-pub(crate) fn remove_thread(mut pool: PthreadPool,mut thread_id: usize) -> PthreadPool {
+pub(crate) fn remove_thread(mut pool: HANDLER, mut thread_id: usize) -> HANDLER {
     let mut thread = pool.get_by_id(thread_id as u32).unwrap().clone();
     match thread.sched {
         SchedulerEnum::RoundRobin => {

@@ -1,5 +1,5 @@
 use std::mem;
-use libc::ucontext_t;
+use libc::{getcontext, ucontext_t};
 
 use crate::my_pthread_pool::{create_pthread_pool};
 use crate::my_schedulers::{scheduler_lottery, scheduler_real_time};
@@ -13,7 +13,7 @@ static mut THREADS_CONTEXT:Vec<Option<ucontext_t>> = Vec::new();
 
 #[derive(Clone)]
 pub(crate) struct HANDLER{
-    pub(crate) pthread_pool: my_pthread_pool::PthreadPool,
+    pub(crate) pthread_pool: my_pthread_pool::HANDLER,
     pub(crate) scheduler: SchedulerEnum,
     pub(crate) mutex: bool,
     pub(crate) serial: u32,
@@ -39,10 +39,9 @@ pub(crate) unsafe fn create_handler() -> HANDLER {
     unsafe{PARENT = Some(mem::uninitialized());}
     let handler = HANDLER {
         pthread_pool: create_pthread_pool(),
-        scheduler: SchedulerEnum::RoundRobin,
+        scheduler: SchedulerEnum::RealTime,
         mutex: my_mutex_init(),
         serial: 0,
-        //origin_context: mem::uninitialized(),
     };
     return handler;
 }
@@ -54,7 +53,22 @@ pub(crate) unsafe fn origin_match() -> &'static mut ucontext_t {
     }
 }
 
-pub(crate) fn secondary_match(i:usize, handler: HANDLER) -> &'static mut ucontext_t {
+pub(crate) fn set_parent_context(i: usize, handler: HANDLER) {
+    match handler.scheduler {
+        SchedulerEnum::RoundRobin => {
+            unsafe{PARENT = Some(THREADS_CONTEXT[i].unwrap());}
+        }
+        SchedulerEnum::Lottery => {
+            unsafe{PARENT = Some(THREADS_CONTEXT[i].unwrap());}
+        }
+        SchedulerEnum::RealTime => {
+            unsafe{PARENT = Some(THREADS_CONTEXT[i].unwrap());}
+        }
+    }
+
+}
+
+pub(crate) fn secondary_match(mut i:usize, handler: HANDLER) -> &'static mut ucontext_t {
     match handler.scheduler {
         SchedulerEnum::RoundRobin => unsafe {
             THREADS_CONTEXT = handler.pthread_pool.rr_contexts.clone();
@@ -65,6 +79,9 @@ pub(crate) fn secondary_match(i:usize, handler: HANDLER) -> &'static mut ucontex
         }
         SchedulerEnum::Lottery => unsafe {
             THREADS_CONTEXT = handler.pthread_pool.lt_contexts.clone();
+            if THREADS_CONTEXT.len() == i {
+                i -= 1
+            }
             match THREADS_CONTEXT[i] {
                 Some(ref mut x) => &mut *x,
                 None => panic!("No hay contexto de origen"),
@@ -72,6 +89,9 @@ pub(crate) fn secondary_match(i:usize, handler: HANDLER) -> &'static mut ucontex
         }
         SchedulerEnum::RealTime => unsafe {
             THREADS_CONTEXT = handler.pthread_pool.rt_contexts.clone();
+            if THREADS_CONTEXT.len() == i {
+                i -= 1
+            }
             match THREADS_CONTEXT[i] {
                 Some(ref mut x) => &mut *x,
                 None => panic!("No hay contexto de origen"),

@@ -1,10 +1,10 @@
 use std::os::raw::c_uint;
-use crate::my_pthread::{my_thread_detach, /*my_thread_join,*/ my_thread_yield, MyPthread, states};
+use crate::my_pthread::{my_thread_detach, my_thread_join, my_thread_yield, MyPthread, states};
 use crate::my_pthread_pool::{ remove_thread};
 use crate::SchedulerEnum;
 use rand::Rng;
 use std::time::Duration;
-use libc::{nanosleep, sleep};
+use libc::{nanosleep, sleep, usleep};
 use crate::handler::HANDLER;
 use crate::mutex::my_mutex_unlock;
 use crate::SchedulerEnum::RoundRobin;
@@ -16,7 +16,7 @@ pub(crate) unsafe fn scheduler_round_robin(mut handler: HANDLER) -> HANDLER {
     while handler.pthread_pool.get_active_threads_number(RoundRobin)> 0 {
         handler = my_mutex_unlock(handler);
         handler = my_thread_yield(handler);
-        sleep(quantum as c_uint);
+        usleep(quantum as u32);
         handler.pthread_pool.actual_thread[0].finishing_validator();
     }
     return handler;
@@ -41,7 +41,7 @@ pub(crate) unsafe fn scheduler_real_time(mut handler: HANDLER) -> HANDLER {
     while handler.pthread_pool.get_active_threads_number(SchedulerEnum::RealTime)> 0 {
         let mut next_thread = shortest_job_selector(handler.clone());
         handler = my_mutex_unlock(handler.clone());
-        //handler.pthread_pool = my_thread_join(handler.pthread_pool.clone() , handler.pthread_pool.get_index_by_id(next_thread.id).unwrap());
+        handler = my_thread_join(handler.clone() , handler.pthread_pool.get_index_by_id(next_thread.id).unwrap());
         sleep(quantum as c_uint);
         handler.pthread_pool.actual_thread[0].finishing_validator();
     }
@@ -88,7 +88,7 @@ pub(crate) unsafe fn scheduler_lottery(mut handler: HANDLER) -> HANDLER {
     tombola.tickets.remove(indice_ticket);
     if next_thread.state == states::ready {
         handler = my_mutex_unlock(handler);
-        //handler.pthread_pool = my_thread_join(handler.pthread_pool.clone() , handler.pthread_pool.get_index_by_id(next_thread.id).unwrap());
+        handler = my_thread_join(handler.clone(), handler.pthread_pool.get_index_by_id(next_thread.id).unwrap());
         handler.pthread_pool.actual_thread[0].finishing_validator();
     }
     return handler;

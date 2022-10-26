@@ -22,7 +22,7 @@ pub(crate) fn change_mutex_state(mut mutex: bool) -> bool {
 
 pub(crate) unsafe fn my_mutex_lock(mut handler: HANDLER) -> HANDLER {
     handler.mutex = true;
-    return (handler);
+    handler
 }
 
 pub(crate) unsafe fn my_mutex_destroy(mut handler: HANDLER) -> HANDLER {

@@ -85,16 +85,41 @@ fn main() {
     let mut file = load_file();
     let mut language = set_values(file);
     let mut handler = unsafe { create_handler() };
-    unsafe { handler = my_thread_create(5, handler, f1, SchedulerEnum::RoundRobin); }
-    unsafe { handler = my_thread_create(3, handler, f2, SchedulerEnum::RoundRobin); }
+
+
+    unsafe { handler = my_thread_create(3, handler, f1, SchedulerEnum::RoundRobin); }
+    unsafe { handler = my_thread_create(7, handler, f2, SchedulerEnum::RoundRobin); }
     unsafe { handler = my_thread_create(1, handler, f3, SchedulerEnum::RoundRobin); }
     unsafe { handler = my_thread_create(2, handler, f4, SchedulerEnum::RoundRobin); }
     unsafe { handler = my_thread_create(2, handler, f5, SchedulerEnum::RealTime); }
     unsafe { handler = my_thread_create(2, handler, f6, SchedulerEnum::RealTime); }
+    unsafe { handler = my_thread_create(2, handler, f10, SchedulerEnum::RealTime); }
     unsafe { handler = my_thread_create(4, handler, f7, SchedulerEnum::Lottery); }
     unsafe { handler = my_thread_create(8, handler, f8, SchedulerEnum::Lottery); }
     unsafe { handler = my_thread_create(5, handler, f9, SchedulerEnum::Lottery); }
-    unsafe { handler = my_thread_create(6, handler, f10, SchedulerEnum::Lottery); }
+    if handler.pthread_pool.actual_thread.is_empty(){
+        match handler.scheduler {
+            SchedulerEnum::RoundRobin => {
+                handler.pthread_pool.actual_thread.push(handler.pthread_pool.rr_pthreads.last().unwrap().clone());
+                handler.pthread_pool.actual_context.push(handler.pthread_pool.rr_contexts.last().unwrap().clone());
+                handler.pthread_pool.rr_pthreads.pop();
+                handler.pthread_pool.rr_contexts.pop();
+            }
+            SchedulerEnum::RealTime => {
+                handler.pthread_pool.actual_thread.push(handler.pthread_pool.rt_pthreads.last().unwrap().clone());
+                handler.pthread_pool.actual_context.push(handler.pthread_pool.rt_contexts.last().unwrap().clone());
+                handler.pthread_pool.rt_pthreads.pop();
+                handler.pthread_pool.rt_contexts.pop();
+            }
+            SchedulerEnum::Lottery => {
+                handler.pthread_pool.actual_thread.push(handler.pthread_pool.lt_pthreads.last().unwrap().clone());
+                handler.pthread_pool.actual_context.push(handler.pthread_pool.lt_contexts.last().unwrap().clone());
+                handler.pthread_pool.lt_pthreads.pop();
+                handler.pthread_pool.lt_contexts.pop();
+            }
+        }
+
+    }
     handler.__run_threads__();
 
 
