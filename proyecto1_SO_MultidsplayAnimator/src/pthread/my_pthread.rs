@@ -3,7 +3,7 @@ use crate::my_pthread_pool::{ remove_thread, state_validation};
 use crate::mutex::{my_mutex_lock};
 use libc::{c_char, swapcontext, makecontext, getcontext, ucontext_t, c_void, setcontext};
 use crate::create_pthread_pool;
-use crate::handler::{HANDLER, origin_match, secondary_match, set_parent_context};
+use crate::handler::{HANDLER, origin_match, secondary_match};
 
 pub static mut INITIAL_CONTEXT: *mut ucontext_t = 0 as *mut ucontext_t;
 pub static mut FINAL_CONTEXT: *mut ucontext_t = 0 as *mut ucontext_t;
@@ -46,7 +46,7 @@ pub(crate) enum states {
 }
 
 
-pub(crate) unsafe fn my_thread_create(mut priority: u64, mut handler: HANDLER, func: extern "C" fn(), mut scheduler: SchedulerEnum) -> HANDLER {
+pub(crate) unsafe fn my_thread_create(mut priority: u64, mut handler: HANDLER, func: extern "C" fn() , mut scheduler: SchedulerEnum) -> HANDLER {
     //Se establece el context para ese nuevo thread
     unsafe {
         let mut starter: [c_char; 8192] = [mem::zeroed(); 8192];
@@ -125,7 +125,6 @@ pub(crate) unsafe fn my_thread_yield(mut handler: HANDLER) -> HANDLER {
     if handler.mutex {
         panic!("No se puede hacer yield porque el mutex esta bloqueado");
     }else{
-        set_parent_context(0,handler.clone());
         INITIAL_CONTEXT = &mut handler.pthread_pool.rr_contexts[0].clone().unwrap();
         swapcontext(origin_match() as *mut ucontext_t, secondary_match(0 , handler.clone()) as *const ucontext_t);
         //set_parent_context(0,handler.clone());
