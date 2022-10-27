@@ -34,6 +34,7 @@ En esta sección se puede detallar que en el código las principales estructuras
 -  `create_pthread_pool() -> PthreadPool`:Esta función es la encargada de la creación e inicialización de la estructura de la piscina de hilos.
 -  `remove_thread(mut pool: PthreadPool,mut thread_id: usize) -> PthreadPool`: Esta función es la encargada de eliminar un thread específico de la dentro de la piscina.
 -  `change_scheduler(mut pool: PthreadPool, scheduler: SchedulerEnum) -> PthreadPool`: Dado que en este proyecto esta estructura de piscina tiene un atributo especifico que indica cual es el scheduler que se esta aplicando actualmente ente función se encarga de cambiar dicho atributo según los parámetros dados 
+-  `state_validation(state: states , thread: MyPthread) -> bool`: función que permite la validación si un thread está en un estado determinado.
 
 #### My_pthread:
 
@@ -55,4 +56,21 @@ En esta sección se puede detallar que en el código las principales estructuras
 
 #### Parser:
 
-- 
+- `set_values(file: Vec<String>) -> languaje`: esta función carga los datos provenientes de un vector de strings en una estructura diseñada para representar una figura y su acción 
+- `load_file() -> Vec<String>`:Función que leer el txt y convierte los datos a un vector de strings
+
+#### Handler:
+
+- `impl HANDLER`
+  - `__run_threads__(mut self)`: Método de la estructura HANDLER que dispara la ejecución de los schedulers.
+
+- `create_handler() -> HANDLER`: función que inicializa la estructura del HANDLER.
+- `origin_match() -> &'static mut ucontext_t`: función que genera un puntero a un contexto padre.
+- `secondary_match(mut i:usize, handler: HANDLER) -> &'static mut ucontext_t`: función que genera un puntero desde un contexto a el contexto padre.
+- `change_scheduler(mut handler: HANDLER, scheduler: SchedulerEnum) -> HANDLER`: función que cambia el scheduler del HANDLER.
+
+#### main:
+
+- `main()`: Función principal del código donde se crean los procesos y se define el inicio de la ejecución.
+
+  

@@ -4,7 +4,7 @@ use libc::{getcontext, ucontext_t};
 use crate::my_pthread_pool::{create_pthread_pool};
 use crate::my_schedulers::{scheduler_lottery, scheduler_real_time};
 use crate::mutex::{my_mutex_init};
-use crate::my_pthread::{EXIT_CONTEXT, SchedulerEnum};
+use crate::my_pthread::{FINAL_CONTEXT, SchedulerEnum};
 use crate::{my_pthread_pool, scheduler_round_robin};
 
 
@@ -20,7 +20,7 @@ pub(crate) struct HANDLER{
     //pub(crate) origin_context: Option<ucontext_t>,
 }impl HANDLER  {
     pub(crate) unsafe fn __run_threads__(mut self) {
-        EXIT_CONTEXT = origin_match() as *mut ucontext_t;
+        FINAL_CONTEXT = origin_match() as *mut ucontext_t;
         match self.scheduler {
             SchedulerEnum::RoundRobin => unsafe {
                 self = scheduler_round_robin(self);
@@ -52,21 +52,6 @@ pub(crate) unsafe fn origin_match() -> &'static mut ucontext_t {
         Some(ref mut x) => &mut *x,
         None => panic!("No hay contexto de origen"),
     }
-}
-
-pub(crate) fn set_parent_context(i: usize, handler: HANDLER) {
-    match handler.scheduler {
-        SchedulerEnum::RoundRobin => {
-            unsafe{PARENT = Some(handler.pthread_pool.rr_contexts[i].unwrap());}
-        }
-        SchedulerEnum::Lottery => {
-            unsafe{PARENT = Some(handler.pthread_pool.lt_contexts[i].unwrap());}
-        }
-        SchedulerEnum::RealTime => {
-            unsafe{PARENT = Some(handler.pthread_pool.rt_contexts[i].unwrap());}
-        }
-    }
-
 }
 
 pub(crate) fn secondary_match(mut i:usize, handler: HANDLER) -> &'static mut ucontext_t {

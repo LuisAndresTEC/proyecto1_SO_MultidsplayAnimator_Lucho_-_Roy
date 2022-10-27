@@ -24,7 +24,7 @@ pub(crate) struct languaje {
     pub(crate) scheduler: SchedulerEnum,
     pub(crate) ascii:  Vec<String>,
     pub(crate) timeExecution: i32,
-    pub(crate) staryPosition: Vec<i32>,
+    pub(crate) startPosition: Vec<i32>,
     pub(crate) endPosition: Vec<i32>,
     pub(crate) rotationAngle: i32,
 }
@@ -69,7 +69,7 @@ pub(crate) fn set_values(file: Vec<String>) -> languaje {
         scheduler: scheduler,
         ascii: ascii,
         timeExecution: file[4].parse::<i32>().unwrap(),
-        staryPosition: startPosition,
+        startPosition: startPosition,
         endPosition: endPosition,
         rotationAngle: file[7].parse::<i32>().unwrap(),
     };

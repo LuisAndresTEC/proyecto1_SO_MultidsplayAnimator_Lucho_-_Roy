@@ -5,8 +5,8 @@ use libc::{c_char, swapcontext, makecontext, getcontext, ucontext_t, c_void, set
 use crate::create_pthread_pool;
 use crate::handler::{HANDLER, origin_match, secondary_match, set_parent_context};
 
-pub static mut CURRENT_THREAD: *mut ucontext_t = 0 as *mut ucontext_t;
-pub static mut EXIT_CONTEXT: *mut ucontext_t = 0 as *mut ucontext_t;
+pub static mut INITIAL_CONTEXT: *mut ucontext_t = 0 as *mut ucontext_t;
+pub static mut FINAL_CONTEXT: *mut ucontext_t = 0 as *mut ucontext_t;
 
 //este objeto es thread sobre el cual se va a trabajar
 #[derive(Clone, Copy)]
@@ -48,7 +48,6 @@ pub(crate) enum states {
 
 pub(crate) unsafe fn my_thread_create(mut priority: u64, mut handler: HANDLER, func: extern "C" fn(), mut scheduler: SchedulerEnum) -> HANDLER {
     //Se establece el context para ese nuevo thread
-
     unsafe {
         let mut starter: [c_char; 8192] = [mem::zeroed(); 8192];
 
@@ -92,8 +91,6 @@ pub(crate) unsafe fn my_thread_create(mut priority: u64, mut handler: HANDLER, f
 }
 
 pub(crate) unsafe fn my_thread_yield(mut handler: HANDLER) -> HANDLER {
-
-
     let mut thread_update= handler.pthread_pool.actual_thread[0].clone();
     let mut context_update= handler.pthread_pool.actual_context[0].clone();
     match handler.scheduler {
@@ -103,8 +100,6 @@ pub(crate) unsafe fn my_thread_yield(mut handler: HANDLER) -> HANDLER {
                 thread_update = handler.pthread_pool.rr_pthreads[0].clone();
                 context_update = handler.pthread_pool.rr_contexts[0].clone();
                 thread_update.state = states::running;
-
-
             }
         }
         SchedulerEnum::Lottery => {
@@ -113,8 +108,6 @@ pub(crate) unsafe fn my_thread_yield(mut handler: HANDLER) -> HANDLER {
                 thread_update = handler.pthread_pool.lt_pthreads[0].clone();
                 context_update = handler.pthread_pool.lt_contexts[0].clone();
                 thread_update.state = states::running;
-
-
             }
         }
 
@@ -124,7 +117,6 @@ pub(crate) unsafe fn my_thread_yield(mut handler: HANDLER) -> HANDLER {
                 thread_update = handler.pthread_pool.rt_pthreads[0].clone();
                 context_update = handler.pthread_pool.rt_contexts[0].clone();
                 thread_update.state = states::running;
-
             }
         }
     }
@@ -134,7 +126,7 @@ pub(crate) unsafe fn my_thread_yield(mut handler: HANDLER) -> HANDLER {
         panic!("No se puede hacer yield porque el mutex esta bloqueado");
     }else{
         set_parent_context(0,handler.clone());
-        CURRENT_THREAD = &mut handler.pthread_pool.rr_contexts[0].clone().unwrap();
+        INITIAL_CONTEXT = &mut handler.pthread_pool.rr_contexts[0].clone().unwrap();
         swapcontext(origin_match() as *mut ucontext_t, secondary_match(0 , handler.clone()) as *const ucontext_t);
         //set_parent_context(0,handler.clone());
         handler = my_mutex_lock(handler.clone());
@@ -159,9 +151,6 @@ pub(crate) unsafe fn my_thread_yield(mut handler: HANDLER) -> HANDLER {
             }
         }
     }
-    /*handler.pthread_pool.actual_thread[0] = thread_update.clone();
-    handler.pthread_pool.actual_context[0] = context_update.clone();*/
-
     return handler.clone();
 }
 
@@ -231,7 +220,7 @@ pub(crate) unsafe fn my_thread_join(mut handler: HANDLER, mut index: usize) -> H
         if handler.mutex {
             panic!("No se puede hacer join porque el mutex esta bloqueado");
         }else {
-            CURRENT_THREAD = &mut handler.pthread_pool.rr_contexts[index].clone().unwrap();
+            INITIAL_CONTEXT = &mut handler.pthread_pool.rr_contexts[index].clone().unwrap();
             swapcontext(origin_match() as *mut ucontext_t, secondary_match(index , handler.clone()) as *const ucontext_t);
             handler = my_mutex_lock(handler.clone());
             match handler.pthread_pool.actual_thread[0].sched {
