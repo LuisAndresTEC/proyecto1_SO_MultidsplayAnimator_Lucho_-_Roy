@@ -6,7 +6,7 @@ use std::io::{BufReader, Read};
 
 //funcion que retorna un vector con todos los elementos de un archivo txt
 pub(crate) fn load_file() -> Vec<String> {
-    let mut file = File::open("parse/message.txt").expect("file not found");
+    let mut file = File::open("src/parse/message.txt").expect("file not found");
     let mut contents = String::new();
     file.read_to_string(&mut contents)
         .expect("something went wrong reading the file");
@@ -19,36 +19,41 @@ pub(crate) fn load_file() -> Vec<String> {
 
 
 pub(crate) struct languaje {
-    pub(crate) weigth: i32,
-    pub(crate) higth:  i32,
+    pub(crate) width: i32,
+    pub(crate) height:  i32,
     pub(crate) scheduler: SchedulerEnum,
     pub(crate) ascii:  Vec<String>,
-    pub(crate) timeExecution: i32,
-    pub(crate) startPosition: Vec<i32>,
-    pub(crate) endPosition: Vec<i32>,
-    pub(crate) rotationAngle: i32,
+    pub(crate) time_execution: i32,
+    pub(crate) start_position: Vec<i32>,
+    pub(crate) end_position: Vec<i32>,
+    pub(crate) rotation_angle: i32,
+    pub(crate) number_of_monitors: i32,
+    pub(crate) monitors:  Vec<String>,
 }
 pub(crate) fn set_values(file: Vec<String>) -> languaje {
-    let mut startPosition = Vec::new();
-    let mut endPosition = Vec::new();
+    let mut start_position = Vec::new();
+    let mut end_position = Vec::new();
 
     //se intoduce el indice 5 del file a start position como si fueran coordenadas
     let mut start = file[5].split(" ");
     let mut start_x = start.next().unwrap().parse::<i32>().unwrap();
     let mut start_y = start.next().unwrap().parse::<i32>().unwrap();
-    startPosition.push(start_x);
-    startPosition.push(start_y);
+    start_position.push(start_x);
+    start_position.push(start_y);
 
     //se intoduce el indice 6 del file a end position como si fueran coordenadas
     let mut end = file[6].split(" ");
     let mut end_x = end.next().unwrap().parse::<i32>().unwrap();
     let mut end_y = end.next().unwrap().parse::<i32>().unwrap();
-    endPosition.push(end_x);
-    endPosition.push(end_y);
+    end_position.push(end_x);
+    end_position.push(end_y);
 
+    //se crea un vector con los monitores
+    let mut monitors = Vec::new();
+    monitors.push(file[9].to_string());
     //se crea un vertor con todos los elementos del ascii
     let mut ascii = Vec::new();
-    for i in 8..15{
+    for i in 10..17{
         ascii.push(file[i].to_string());
     }
     //se parcea de forma manual el nombre del scheduler
@@ -64,14 +69,16 @@ pub(crate) fn set_values(file: Vec<String>) -> languaje {
 
     //se asignan los valores al struct
     let mut languaje = languaje {
-        weigth: file[1].parse::<i32>().unwrap(),
-        higth: file[2].parse::<i32>().unwrap(),
+        width: file[1].parse::<i32>().unwrap(),
+        height: file[2].parse::<i32>().unwrap(),
         scheduler: scheduler,
         ascii: ascii,
-        timeExecution: file[4].parse::<i32>().unwrap(),
-        startPosition: startPosition,
-        endPosition: endPosition,
-        rotationAngle: file[7].parse::<i32>().unwrap(),
+        time_execution: file[4].parse::<i32>().unwrap(),
+        start_position: start_position,
+        end_position: end_position,
+        rotation_angle: file[7].parse::<i32>().unwrap(),
+        number_of_monitors: file[8].parse::<i32>().unwrap(),
+        monitors: monitors,
     };
 
     return languaje;
