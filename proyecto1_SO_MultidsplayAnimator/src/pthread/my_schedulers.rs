@@ -23,7 +23,7 @@ pub(crate) unsafe fn scheduler_round_robin(mut handler: HANDLER) -> HANDLER {
 
 }
 
-
+//funcion que determina cual de los hilos de la lista de real time es el que debe ejecutarse
 pub(crate) fn shortest_job_selector (mut handler: HANDLER) -> MyPthread {
     let mut shortest_job = handler.pthread_pool.rt_pthreads[0].clone();
     for pthread in handler.pthread_pool.rt_pthreads {
@@ -31,11 +31,12 @@ pub(crate) fn shortest_job_selector (mut handler: HANDLER) -> MyPthread {
             shortest_job = pthread.clone();
         }
     }
+
     return shortest_job;
 }
 
-//implementar el monotonic pag.521
 //EDF
+//funcion que dirige el algoritm de planificacion de los hilos de real time
 pub(crate) unsafe fn scheduler_real_time(mut handler: HANDLER) -> HANDLER {
     let quantum: i32 = 0.05 as i32;
     while handler.pthread_pool.get_active_threads_number(SchedulerEnum::RealTime)> 0 {
@@ -51,7 +52,7 @@ pub(crate) unsafe fn scheduler_real_time(mut handler: HANDLER) -> HANDLER {
 }
 
 
-
+//funcion que dirige el algoritm de planificacion de los hilos de lottery
 pub(crate) unsafe fn scheduler_lottery(mut handler: HANDLER) -> HANDLER {
     //se crean los objetos ticket y tombola los cuales se van a utilizar para determinar el hilo a procesar
     #[derive(Clone)]

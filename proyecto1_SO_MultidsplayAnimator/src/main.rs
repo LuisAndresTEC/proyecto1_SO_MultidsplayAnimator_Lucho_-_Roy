@@ -11,12 +11,16 @@ use crate::my_pthread_pool::{create_pthread_pool};
 use crate::my_schedulers::scheduler_round_robin;
 use crate::parser::{load_file, set_values};
 use libc::{getcontext, setcontext, swapcontext};
-use crate::my_canvas::animation;
+use crate::my_canvas::{animation};
+
+static mut file: Vec<String> = Vec::new();
+
+
 
 
 extern "C"  fn animator() {
     unsafe {
-        animation();
+        animation(file.clone());
         swapcontext(INITIAL_CONTEXT, FINAL_CONTEXT);
     }
 }
@@ -25,8 +29,14 @@ extern "C"  fn animator() {
 
 fn main() {
     unsafe {
-        let mut file = load_file();
-        let mut language = set_values(file);
+        let args = std::env::args().collect::<Vec<String>>();
+        if args[1] != "animar" || args[2] != "-c"{
+            panic!("Error en los argumentos");
+        }
+        let mut config_path = args[3].clone();
+
+        file = load_file(config_path);
+        let mut language = set_values(file.clone());
         //animator();
         let mut handler = unsafe { create_handler() };
 

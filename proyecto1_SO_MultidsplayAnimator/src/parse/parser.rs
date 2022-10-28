@@ -5,11 +5,11 @@ use std::io::{BufReader, Read};
 #[path = "src/pthread/my_pthread"] use crate:: SchedulerEnum;
 
 //funcion que retorna un vector con todos los elementos de un archivo txt
-pub(crate) fn load_file() -> Vec<String> {
-    let mut file = File::open("parse/message.txt").expect("file not found");
+pub(crate) fn load_file(url: String) -> Vec<String> {
+    let mut file = File::open(url).expect("File not found");
     let mut contents = String::new();
     file.read_to_string(&mut contents)
-        .expect("something went wrong reading the file");
+        .expect("Something went wrong reading the file");
     let mut lines: Vec<String> = Vec::new();
     for line in contents.lines() {
         lines.push(line.to_string());
@@ -17,7 +17,7 @@ pub(crate) fn load_file() -> Vec<String> {
     return lines;
 }
 
-
+// Estructura de la configuración
 pub(crate) struct Language {
     pub(crate) width: i32,
     pub(crate) height:  i32,
@@ -33,6 +33,8 @@ pub(crate) struct Language {
     pub(crate) ascii_180:  Vec<String>,
     pub(crate) ascii_270:  Vec<String>,
 }
+
+// Asigna los valores correspondientes a la estructura del lenguaje
 pub(crate) fn set_values(file: Vec<String>) -> Language {
     let mut start_position = Vec::new();
     let mut end_position = Vec::new();
@@ -59,7 +61,7 @@ pub(crate) fn set_values(file: Vec<String>) -> Language {
     for i in 10..15{
         ascii.push(file[i].to_string());
     }
-    //se parcea de forma manual el nombre del scheduler
+    //se parsea de forma manual el nombre del scheduler
     let scheduler;
     if file[3].contains("RoundRobin") {
         scheduler = SchedulerEnum::RoundRobin;
@@ -101,8 +103,3 @@ pub(crate) fn set_values(file: Vec<String>) -> Language {
 
     return language;
 }
-
-
-
-
-//esta funcion separa el contenido del txt en un vector de strings

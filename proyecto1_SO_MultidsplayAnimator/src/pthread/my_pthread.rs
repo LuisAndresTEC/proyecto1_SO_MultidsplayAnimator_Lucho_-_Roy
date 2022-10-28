@@ -45,7 +45,7 @@ pub(crate) enum states {
     detached
 }
 
-
+//funcion que crea un nuevo hilo y lo agrega a la pila de hilos y a su vez al handler
 pub(crate) unsafe fn my_thread_create(mut priority: u64, mut handler: HANDLER, func: extern "C" fn() , mut scheduler: SchedulerEnum) -> HANDLER {
     //Se establece el context para ese nuevo thread
     unsafe {
@@ -90,6 +90,7 @@ pub(crate) unsafe fn my_thread_create(mut priority: u64, mut handler: HANDLER, f
     return handler.clone();
 }
 
+// Funcion que se encarga de ejecutar el los contextos tomando simepre el primero de la lista de contextos
 pub(crate) unsafe fn my_thread_yield(mut handler: HANDLER) -> HANDLER {
     let mut thread_update= handler.pthread_pool.actual_thread[0].clone();
     let mut context_update= handler.pthread_pool.actual_context[0].clone();
@@ -153,7 +154,7 @@ pub(crate) unsafe fn my_thread_yield(mut handler: HANDLER) -> HANDLER {
     return handler.clone();
 }
 
-
+//Funcion que se encarga de ejecutar el los contextos dado un hilo especifico y en teoria interrumpiendo la ejecucion del hilo actual
 pub(crate) fn my_thread_detach(mut thread: MyPthread, mut handler: HANDLER) -> HANDLER {
     if thread.state == states:: detached || thread.state == states::terminated || thread.state == states::blocked {
         panic!("El thread no puede ser detached");
@@ -182,11 +183,10 @@ pub(crate) fn my_thread_detach(mut thread: MyPthread, mut handler: HANDLER) -> H
 
 
 
-//esta funcion espera a que la ejecucion de un thread termine
+//esta funcion espera a que la ejecucion de un thread determinado
 pub(crate) unsafe fn my_thread_join(mut handler: HANDLER, mut index: usize) -> HANDLER {
     let mut thread_update= handler.pthread_pool.actual_thread[0].clone();
     let mut context_update= handler.pthread_pool.actual_context[0].clone();
-
     match handler.scheduler {
         SchedulerEnum::RoundRobin => {
             if state_validation(states::ready, handler.pthread_pool.rr_pthreads[0]) ||
@@ -216,57 +216,83 @@ pub(crate) unsafe fn my_thread_join(mut handler: HANDLER, mut index: usize) -> H
         }
     }
 
-        if handler.mutex {
-            panic!("No se puede hacer join porque el mutex esta bloqueado");
-        }else {
-            INITIAL_CONTEXT = &mut handler.pthread_pool.rr_contexts[index].clone().unwrap();
-            swapcontext(origin_match() as *mut ucontext_t, secondary_match(index , handler.clone()) as *const ucontext_t);
-            handler = my_mutex_lock(handler.clone());
-            match handler.pthread_pool.actual_thread[0].sched {
-                SchedulerEnum::RealTime => {
-                    /*handler.pthread_pool.rt_pthreads.push(handler.pthread_pool.actual_thread[0].clone());
-                    handler.pthread_pool.rt_contexts.push(handler.pthread_pool.actual_context[0].clone());*/
-                    handler.pthread_pool.rt_pthreads.remove(index);
-                    handler.pthread_pool.rt_contexts.remove(index);
-                }
-                SchedulerEnum::RoundRobin => {
-                    /*handler.pthread_pool.rr_pthreads.push(handler.pthread_pool.actual_thread[0].clone());
-                    handler.pthread_pool.rr_contexts.push(handler.pthread_pool.actual_context[0].clone());*/
-                    handler.pthread_pool.rr_pthreads.remove(index);
-                    handler.pthread_pool.rr_contexts.remove(index);
-                }
-                SchedulerEnum::Lottery => {
-                    /*handler.pthread_pool.lt_pthreads.push(handler.pthread_pool.actual_thread[0].clone());
-                    handler.pthread_pool.lt_contexts.push(handler.pthread_pool.actual_context[0].clone());*/
-                    handler.pthread_pool.lt_pthreads.remove(index);
-                    handler.pthread_pool.lt_contexts.remove(index);
-                }
+    if handler.mutex {
+        panic!("No se puede hacer join porque el mutex esta bloqueado");
+    }else {
+        INITIAL_CONTEXT = &mut handler.pthread_pool.rr_contexts[index].clone().unwrap();
+        swapcontext(origin_match() as *mut ucontext_t, secondary_match(index , handler.clone()) as *const ucontext_t);
+        handler = my_mutex_lock(handler.clone());
+        match handler.pthread_pool.actual_thread[0].sched {
+            SchedulerEnum::RealTime => {
+
+                handler.pthread_pool.rt_pthreads.remove(index);
+                handler.pthread_pool.rt_contexts.remove(index);
             }
-            handler.pthread_pool.actual_thread[0] = thread_update.clone();
-            handler.pthread_pool.actual_context[0] = context_update.clone();
-            return handler;
+            SchedulerEnum::RoundRobin => {
+                handler.pthread_pool.rr_pthreads.remove(index);
+                handler.pthread_pool.rr_contexts.remove(index);
+            }
+            SchedulerEnum::Lottery => {
+                handler.pthread_pool.lt_pthreads.remove(index);
+                handler.pthread_pool.lt_contexts.remove(index);
+            }
         }
-
-
+        handler.pthread_pool.actual_thread[0] = thread_update.clone();
+        handler.pthread_pool.actual_context[0] = context_update.clone();
+        return handler;
+    }
 }
 
 
-
+//funcion que finaliza l ejecucion de un thread, removiendo el thread de la lista de threads.
 pub(crate) fn my_thread_end(mut handler: HANDLER, index: usize) -> HANDLER {
     handler = remove_thread(handler, index);
     return handler
 }
 
 
-
-pub(crate) fn my_thread_chsched(mut thread: MyPthread, scheduler: u32) -> MyPthread {
+//funcion que se encarga de cambiar el scheduler de un thread y reuvicarlo en su nueva lista de threads
+pub(crate) fn my_thread_chsched(mut thread: MyPthread, scheduler: u32, mut handler: HANDLER) -> HANDLER {
+    let mut index = handler.pthread_pool.get_index_by_id(thread.id);
+    let mut context;
+    match thread.sched {
+        SchedulerEnum::RoundRobin => {
+            context = handler.pthread_pool.rr_contexts[index].clone();
+            handler.pthread_pool.rr_pthreads.remove(index);
+            handler.pthread_pool.rr_contexts.remove(index);
+        }
+        SchedulerEnum::Lottery => {
+            context = handler.pthread_pool.lt_contexts[index].clone();
+            handler.pthread_pool.lt_pthreads.remove(index);
+            handler.pthread_pool.lt_contexts.remove(index);
+        }
+        SchedulerEnum::RealTime => {
+            context = handler.pthread_pool.rt_contexts[index].clone();
+            handler.pthread_pool.rt_pthreads.remove(index);
+            handler.pthread_pool.rt_contexts.remove(index);
+        }
+    }
     match scheduler {
         1 => thread.sched = SchedulerEnum::RoundRobin,
         2 => thread.sched = SchedulerEnum::Lottery,
         3 => thread.sched = SchedulerEnum::RealTime,
         _ => thread.sched = SchedulerEnum::RoundRobin
     }
-    return thread
+    match thread.sched {
+        SchedulerEnum::RoundRobin => {
+            handler.pthread_pool.rr_pthreads.push(thread);
+            handler.pthread_pool.rr_contexts.push(context);
+        }
+        SchedulerEnum::Lottery => {
+            handler.pthread_pool.lt_pthreads.push(thread);
+            handler.pthread_pool.lt_contexts.push(context);
+        }
+        SchedulerEnum::RealTime => {
+            handler.pthread_pool.rt_pthreads.push(thread);
+            handler.pthread_pool.rt_contexts.push(context);
+        }
+    }
+    return handler.clone();
 }
 
 

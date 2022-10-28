@@ -122,6 +122,7 @@ pub(crate) struct PtheadPool {
         return count;
     }
 }
+//Funcione que valida el estado de un thread
 pub(crate) fn state_validation(state: states , thread: MyPthread) -> bool {
     match state {
         states::running => {
@@ -151,7 +152,7 @@ pub(crate) fn state_validation(state: states , thread: MyPthread) -> bool {
 
 
 
-
+// funcion que se encarga de inicializar el pool de threads
 pub(crate) fn create_pthread_pool() -> PtheadPool {
     let mut pool = PtheadPool {
         rr_pthreads: Vec::new(),
@@ -166,6 +167,7 @@ pub(crate) fn create_pthread_pool() -> PtheadPool {
     return pool
 }
 
+// funcion que remueve un thread del pool
 pub(crate) fn remove_thread(mut handler: HANDLER, mut thread_id: usize) -> HANDLER {
     let mut thread = handler.pthread_pool.get_by_id(thread_id as u32).unwrap().clone();
     match thread.sched {
