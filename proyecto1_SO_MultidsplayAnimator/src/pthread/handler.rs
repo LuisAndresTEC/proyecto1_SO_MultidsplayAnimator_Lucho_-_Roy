@@ -37,11 +37,11 @@ pub(crate) struct HANDLER{
 }
 
 //metodo que inicializa el handler
-pub(crate) unsafe fn create_handler() -> HANDLER {
+pub(crate) unsafe fn create_handler(sched: SchedulerEnum) -> HANDLER {
     unsafe{PARENT = Some(mem::uninitialized());}
     let handler = HANDLER {
         pthread_pool: create_pthread_pool(),
-        scheduler: SchedulerEnum::RoundRobin,
+        scheduler: sched,
         mutex: my_mutex_init(),
         serial: 1,
     };

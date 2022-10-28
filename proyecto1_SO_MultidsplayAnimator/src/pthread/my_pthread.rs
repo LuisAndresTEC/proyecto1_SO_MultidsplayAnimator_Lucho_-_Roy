@@ -189,16 +189,16 @@ pub(crate) unsafe fn my_thread_join(mut handler: HANDLER, mut index: usize) -> H
     let mut context_update= handler.pthread_pool.actual_context[0].clone();
     match handler.scheduler {
         SchedulerEnum::RoundRobin => {
-            if state_validation(states::ready, handler.pthread_pool.rr_pthreads[0]) ||
-                state_validation(states::running, handler.pthread_pool.rr_pthreads[0]) {
+            if state_validation(states::ready, handler.pthread_pool.rr_pthreads[index]) ||
+                state_validation(states::running, handler.pthread_pool.rr_pthreads[index]) {
                 thread_update = handler.pthread_pool.rr_pthreads[index];
                 context_update = handler.pthread_pool.rr_contexts[index];
                 thread_update.state = states::terminated;
             }
         }
         SchedulerEnum::Lottery => {
-            if state_validation(states::ready, handler.pthread_pool.rr_pthreads[0]) ||
-                state_validation(states::running, handler.pthread_pool.rr_pthreads[0]) {
+            if state_validation(states::ready, handler.pthread_pool.rr_pthreads[index]) ||
+                state_validation(states::running, handler.pthread_pool.rr_pthreads[index]) {
                 thread_update = handler.pthread_pool.lt_pthreads[index];
                 context_update = handler.pthread_pool.lt_contexts[index];
                 thread_update.state = states::terminated;
@@ -206,8 +206,8 @@ pub(crate) unsafe fn my_thread_join(mut handler: HANDLER, mut index: usize) -> H
             }
         }
         SchedulerEnum::RealTime => {
-            if state_validation(states::ready, handler.pthread_pool.rr_pthreads[0]) ||
-                state_validation(states::running, handler.pthread_pool.rr_pthreads[0]) {
+            if state_validation(states::ready, handler.pthread_pool.rr_pthreads[index]) ||
+                state_validation(states::running, handler.pthread_pool.rr_pthreads[index]) {
                 thread_update = handler.pthread_pool.rt_pthreads[index];
                 context_update = handler.pthread_pool.rt_contexts[index];
                 thread_update.state = states::terminated;
